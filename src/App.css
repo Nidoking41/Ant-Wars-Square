@@ -1,0 +1,474 @@
+body, html {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  /* Touch screens: allow scrolling but not pinch-zoom or double-tap zoom,
+     which would enlarge the page and push the side panels off screen */
+  touch-action: pan-x pan-y;
+  height: 100vh;
+  width: 100vw;
+  background-image: url('./forestfloor.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.App {
+  text-align: center;
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes turnPopupPulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Feedback toast entrance - keeps the horizontal centering transform */
+@keyframes feedbackPop {
+  0% {
+    transform: translateX(-50%) translateY(-8px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ---- Hero power flash ------------------------------------------------
+   A quick (~1.5s) full-screen moment when a hero ability fires: a dark band
+   snaps open across the middle, the hero's portrait slides in, a beam in the
+   player's colour (--hero-color) blasts sideways across the screen, then it
+   all snaps shut. pointer-events: none so it never blocks a click. */
+.hero-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  pointer-events: none;
+  overflow: hidden;
+  animation: hf-dim 3s ease-out forwards;
+}
+.hero-flash-band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 220px;
+  margin-top: -110px;
+  background: linear-gradient(to bottom, rgba(8, 6, 14, 0.92), rgba(20, 16, 30, 0.96), rgba(8, 6, 14, 0.92));
+  border-top: 4px solid var(--hero-color);
+  border-bottom: 4px solid var(--hero-color);
+  box-shadow: 0 0 40px var(--hero-color);
+  transform-origin: center;
+  animation: hf-band 3s cubic-bezier(0.2, 0.9, 0.2, 1) forwards;
+  overflow: hidden;
+}
+.hero-flash-lines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(to bottom,
+    transparent 0, transparent 9px,
+    rgba(255, 255, 255, 0.10) 9px, rgba(255, 255, 255, 0.10) 11px);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 30%, #000 70%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 30%, #000 70%, transparent);
+  animation: hf-lines 0.25s linear infinite;
+}
+.hero-flash-beam {
+  position: absolute;
+  left: 190px;
+  top: 50%;
+  height: 84px;
+  margin-top: -42px;
+  width: 0;
+  border-radius: 0 42px 42px 0;
+  background:
+    repeating-linear-gradient(to right, transparent 0, transparent 26px, rgba(255, 255, 255, 0.35) 26px, rgba(255, 255, 255, 0.35) 34px),
+    linear-gradient(to bottom, transparent 0%, var(--hero-color) 18%, #ffffff 42%, #ffffff 58%, var(--hero-color) 82%, transparent 100%);
+  box-shadow: 0 0 24px var(--hero-color), 0 0 60px var(--hero-color);
+  animation: hf-beam 3s ease-out forwards, hf-beam-pulse 0.12s linear infinite;
+}
+.hero-flash-portrait {
+  position: absolute;
+  left: 30px;
+  top: 50%;
+  width: 150px;
+  height: 150px;
+  margin-top: -75px;
+  object-fit: cover;
+  image-rendering: pixelated;
+  background: #000;
+  border: 4px solid var(--hero-color);
+  border-radius: 10px;
+  box-shadow: 0 0 22px var(--hero-color);
+  animation: hf-portrait 3s cubic-bezier(0.2, 0.9, 0.2, 1) forwards;
+}
+.hero-flash-text {
+  position: absolute;
+  right: 50px;
+  bottom: 22px;
+  text-align: right;
+  font-family: sans-serif;
+  text-transform: uppercase;
+  animation: hf-text 3s cubic-bezier(0.2, 0.9, 0.2, 1) forwards;
+}
+.hero-flash-name {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: bold;
+  letter-spacing: 3px;
+  opacity: 0.85;
+}
+.hero-flash-ability {
+  color: #ffffff;
+  font-size: 34px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-shadow: 0 0 12px var(--hero-color), 0 0 2px var(--hero-color), 3px 3px 0 rgba(0, 0, 0, 0.8);
+}
+@keyframes hf-dim {
+  0% { background: rgba(255, 255, 255, 0.35); }
+  8% { background: rgba(0, 0, 0, 0.35); }
+  80% { background: rgba(0, 0, 0, 0.35); }
+  100% { background: rgba(0, 0, 0, 0); }
+}
+@keyframes hf-band {
+  0% { transform: scaleY(0); }
+  10% { transform: scaleY(1); }
+  85% { transform: scaleY(1); }
+  100% { transform: scaleY(0); }
+}
+@keyframes hf-lines {
+  from { background-position: 0 0; }
+  to { background-position: 0 22px; }
+}
+@keyframes hf-portrait {
+  0% { transform: translateX(-260px); }
+  14% { transform: translateX(0); }
+  18% { transform: translateX(-6px); }
+  22% { transform: translateX(0); }
+  85% { transform: translateX(0); opacity: 1; }
+  100% { transform: translateX(-60px); opacity: 0; }
+}
+@keyframes hf-beam {
+  0%, 18% { width: 0; opacity: 1; }
+  34% { width: calc(100vw - 190px); opacity: 1; }
+  75% { width: calc(100vw - 190px); opacity: 1; transform: scaleY(1); }
+  90% { width: calc(100vw - 190px); opacity: 1; transform: scaleY(0.15); }
+  100% { width: calc(100vw - 190px); opacity: 0; transform: scaleY(0); }
+}
+@keyframes hf-beam-pulse {
+  from { background-position: 0 0, 0 0; }
+  to { background-position: 34px 0, 0 0; }
+}
+@keyframes hf-text {
+  0%, 20% { transform: translateX(120%); opacity: 0; }
+  32% { transform: translateX(0); opacity: 1; }
+  85% { transform: translateX(0); opacity: 1; }
+  100% { transform: translateX(40px); opacity: 0; }
+}
+.hero-info {
+  position: fixed;
+  top: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2900;
+  max-width: 460px;
+  padding: 12px 20px;
+  background: rgba(16, 12, 24, 0.92);
+  border: 3px solid var(--hero-color);
+  border-radius: 8px;
+  box-shadow: 0 0 18px var(--hero-color), 0 4px 12px rgba(0, 0, 0, 0.6);
+  color: #fff;
+  text-align: center;
+  font-family: sans-serif;
+  cursor: pointer;
+  animation: hi-show 4.5s ease forwards;
+}
+.hero-info-name {
+  color: var(--hero-color);
+  font-weight: bold;
+  font-size: 18px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 4px;
+  text-shadow: 0 0 6px var(--hero-color);
+}
+.hero-info-desc {
+  font-size: 15px;
+  line-height: 1.35;
+}
+@keyframes hi-show {
+  0% { opacity: 0; transform: translateX(-50%) translateY(-14px) scale(0.95); }
+  8% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  85% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-8px) scale(1); }
+}
+
+/* Selected Ant action buttons: one size for every button, whatever its label */
+.ant-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* two per row so the panel fits without scrolling */
+  gap: 4px;
+}
+
+.ant-actions > button {
+  box-sizing: border-box;
+  width: 100% !important;
+  min-height: 38px; /* grows for a label that wraps, so nothing is cut off */
+  height: auto;
+  margin: 0 !important;
+  padding: 3px 4px !important;
+  font-size: 12px !important;
+  line-height: 1.1;
+  white-space: normal;
+}
+
+/* Anything that isn't a button (hints, confirm text) takes a whole row */
+.ant-actions > :not(button) {
+  grid-column: 1 / -1;
+}
+
+/* Selected ant details: tight lines so the side panel fits on screen */
+.selected-ant-info p {
+  margin: 2px 0 !important;
+}
+.selected-ant-info h4 {
+  margin: 0 0 4px 0 !important;
+}
+
+/* Hero picker on the setup screens: one compact row per hero (portrait on the
+   left, name and description beside it) so all five fit without scrolling */
+.hero-picker {
+  display: flex !important;
+  flex-direction: column;
+  flex-wrap: nowrap !important;
+  gap: 6px !important;
+}
+
+.hero-picker > div {
+  display: grid !important;
+  grid-template-columns: 64px 1fr;
+  column-gap: 10px;
+  align-items: center;
+  width: auto !important;
+  padding: 6px 8px !important;
+  text-align: left !important;
+}
+
+.hero-picker > div > img {
+  grid-row: 1 / span 2;
+  width: 64px !important;
+  margin: 0 !important;
+}
+
+.hero-picker > div > div:first-of-type {
+  align-self: end;
+}
+
+.hero-picker > div > div:last-of-type {
+  align-self: start;
+}
+
+/* Campaign UI pop-ups (level.uiTips): the button being explained pulses in
+   gold and a note sits beside it, in the same gold as the map pop-up */
+.ui-tip-target {
+  position: relative;
+  z-index: 2600;
+  animation: ui-tip-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes ui-tip-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px #ffd34d, 0 0 10px 2px rgba(255, 211, 77, 0.6); }
+  50% { box-shadow: 0 0 0 5px #ffd34d, 0 0 22px 6px rgba(255, 211, 77, 0.9); }
+}
+
+.ui-tip {
+  position: fixed;
+  z-index: 2700;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  background: rgba(20, 16, 28, 0.95);
+  border: 2px solid #ffd34d;
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+  color: #f0e8d8;
+  font-family: sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.ui-tip-arrow {
+  position: absolute;
+  top: 18px;
+  width: 0;
+  height: 0;
+  border-top: 9px solid transparent;
+  border-bottom: 9px solid transparent;
+}
+
+.ui-tip-arrow-low {
+  top: auto;
+  bottom: 18px;
+}
+
+.ui-tip-arrow-left {
+  left: -11px;
+  border-right: 10px solid #ffd34d;
+}
+
+.ui-tip-arrow-right {
+  right: -11px;
+  border-left: 10px solid #ffd34d;
+}
+
+.ui-tip-title {
+  color: #ffd34d;
+  font-weight: bold;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.ui-tip-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.ui-tip-count {
+  margin-right: auto;
+  color: #a09888;
+  font-size: 12px;
+}
+
+.ui-tip-buttons button {
+  padding: 3px 12px;
+  background: transparent;
+  color: #ffd34d;
+  border: 1px solid #ffd34d;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.ui-tip-buttons .ui-tip-next {
+  background: #ffd34d;
+  color: #1a1a2e;
+}
+
+/* Burrowed Marauder strike: each spike shoots up out of the ground, then sinks */
+.spike-strike {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  transform: scaleY(0);
+  animation: spike-strike 0.55s ease-out forwards;
+}
+@keyframes spike-strike {
+  0% { transform: scaleY(0); opacity: 1; }
+  35% { transform: scaleY(1.25); opacity: 1; }
+  60% { transform: scaleY(1); opacity: 1; }
+  100% { transform: scaleY(0.2); opacity: 0; }
+}
+
+/* Screen shake: an Exploding ant (strong) or a Bombardier shell landing (light) */
+.screen-shake-strong { animation: screen-shake-strong 0.55s linear; }
+.screen-shake-light { animation: screen-shake-light 0.28s linear; }
+@keyframes screen-shake-strong {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-7px, 4px); }
+  20% { transform: translate(6px, -5px); }
+  30% { transform: translate(-5px, -3px); }
+  40% { transform: translate(5px, 4px); }
+  55% { transform: translate(-3px, 2px); }
+  70% { transform: translate(2px, -2px); }
+  85% { transform: translate(-1px, 1px); }
+}
+@keyframes screen-shake-light {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-3px, 2px); }
+  50% { transform: translate(3px, -2px); }
+  75% { transform: translate(-2px, 1px); }
+}
+
+/* A lost ant (campaign level 8) just found: grey at first, then its new colour */
+.lost-ant-joining { animation: lost-ant-joining 1.8s ease-in forwards; }
+@keyframes lost-ant-joining {
+  0%, 35% { filter: grayscale(1) brightness(0.85); }
+  100% { filter: grayscale(0) brightness(1); }
+}
+
+/* Key caps in the hotkey tutorial */
+.hotkey-tutorial kbd {
+  display: inline-block;
+  min-width: 18px;
+  padding: 1px 6px;
+  margin: 0 2px;
+  background: #2b2b2b;
+  border: 1px solid #777;
+  border-bottom-width: 3px;
+  border-radius: 4px;
+  color: #ffd34d;
+  font-family: monospace;
+  font-weight: bold;
+  text-align: center;
+}

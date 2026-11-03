@@ -1,0 +1,126 @@
+import { useState } from 'react';
+import { getSpriteInfo } from './spriteConfig';
+
+// Custom hook to manage sprite animations
+export function useSprites() {
+  // Track animation state for each ant: { antId: { animation: 'idle'|'walk'|'attack', frame: 0, timestamp: number } }
+  const [antAnimations, setAntAnimations] = useState({});
+
+  // Frames are stepped by the browser itself (SpriteCycle in App.js), so
+  // nothing here re-draws the board while ants stand idle.
+
+  // Set animation for an ant
+  const setAntAnimation = (antId, antType, animation, playerColor = null) => {
+    setAntAnimations(prev => ({
+      ...prev,
+      [antId]: {
+        antType,
+        animation,
+        playerColor,
+        frame: 0,
+        timestamp: Date.now()
+      }
+    }));
+  };
+
+  // Start an idle animation for an ant only if it does not have one yet (or
+  // it has changed type). Unlike setAntAnimation this never restarts an
+  // animation that is already running, so it is safe to call for every ant
+  // whenever the board changes.
+  const ensureAntAnimation = (antId, antType, playerColor = null) => {
+    setAntAnimations(prev => {
+      const current = prev[antId];
+      if (current && current.antType === antType) return prev;
+      return {
+        ...prev,
+        [antId]: {
+          antType,
+          animation: 'idle',
+          playerColor,
+          frame: 0,
+          timestamp: Date.now()
+        }
+      };
+    });
+  };
+
+  // Remove ant animation when ant is deleted
+  const removeAntAnimation = (antId) => {
+    setAntAnimations(prev => {
+      const updated = { ...prev };
+      delete updated[antId];
+      return updated;
+    });
+  };
+
+  // Get current frame info for an ant
+  const getAntFrame = (antId, antType, defaultAnimation = 'idle', playerColor = null) => {
+    const anim = antAnimations[antId];
+    const animation = anim?.animation || defaultAnimation;
+    const frame = anim?.frame || 0;
+    // Always prefer the passed playerColor (most up-to-date) over stored one
+    const animPlayerColor = playerColor || anim?.playerColor;
+
+    const spriteInfo = getSpriteInfo(antType, animation, animPlayerColor);
+    if (!spriteInfo) {
+      return null;
+    }
+
+    return {
+      ...spriteInfo,
+      currentFrame: frame,
+      animation
+    };
+  };
+
+  // Set animation for an egg (same as ant but with type 'egg')
+  const setEggAnimation = (eggId, playerColor = null) => {
+    setAntAnimations(prev => ({
+      ...prev,
+      [eggId]: {
+        antType: 'egg',
+        animation: 'idle',
+        playerColor,
+        frame: 0,
+        timestamp: Date.now()
+      }
+    }));
+  };
+
+  // Remove egg animation when egg is deleted/hatched
+  const removeEggAnimation = (eggId) => {
+    setAntAnimations(prev => {
+      const updated = { ...prev };
+      delete updated[eggId];
+      return updated;
+    });
+  };
+
+  // Get current frame info for an egg
+  const getEggFrame = (eggId, playerColor = null) => {
+    const anim = antAnimations[eggId];
+    const frame = anim?.frame || 0;
+    const animPlayerColor = playerColor || anim?.playerColor;
+
+    const spriteInfo = getSpriteInfo('egg', 'idle', animPlayerColor);
+    if (!spriteInfo) {
+      return null;
+    }
+
+    return {
+      ...spriteInfo,
+      currentFrame: frame,
+      animation: 'idle'
+    };
+  };
+
+  return {
+    setAntAnimation,
+    ensureAntAnimation,
+    removeAntAnimation,
+    getAntFrame,
+    setEggAnimation,
+    removeEggAnimation,
+    getEggFrame
+  };
+}

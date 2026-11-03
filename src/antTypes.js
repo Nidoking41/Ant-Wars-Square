@@ -1,0 +1,531 @@
+// Ant type definitions with stats and abilities
+
+export const AntTypes = {
+  QUEEN: {
+    id: 'queen',
+    name: 'Queen',
+    cost: { food: 0, minerals: 0 }, // Queens start on the map
+    hatchTime: 0,
+    maxHealth: 60,
+    attack: 6,
+    defense: 2,
+    moveRange: 1,
+    attackRange: 2, // Queens can attack 2 spaces away
+    resourceGatherRate: 0,
+    revealEnergyCost: 20, // Energy cost for Reveal ability (unlocked at Brood Queen)
+    description: 'The heart of your colony. If she dies, you lose!',
+    icon: '👑🐜'
+  },
+
+  // Campaign-only. A developing queen: immobile, defenceless, and as vital as
+  // a queen - if she dies, the level is lost. She feeds the colony while she
+  // grows, which is the only income on levels that have no queen.
+  QUEEN_LARVA: {
+    id: 'queenLarva',
+    name: 'Queen Larva',
+    cost: { food: 9999, minerals: 9999 }, // never buildable; placed by levels only
+    hatchTime: 0,
+    maxHealth: 20,
+    attack: 0,
+    defense: 2,
+    moveRange: 0,
+    attackRange: 0,
+    resourceGatherRate: 0,
+    foodIncome: 4, // per round, like a queen's passive income
+    cannotMove: true,
+    campaignOnly: true,
+    description: 'A future queen, still growing. She cannot move or fight. Protect her.',
+    icon: '🥚'
+  },
+
+  SCOUT: {
+    id: 'scout',
+    name: 'Scout Ant',
+    cost: { food: 15, minerals: 0 },
+    hatchTime: 1, // turns
+    maxHealth: 25,
+    attack: 6,
+    defense: 0,
+    moveRange: 3,
+    attackRange: 1,
+    resourceGatherRate: 3,
+    description: 'Fast, cheap, and weak. Perfect for early game exploration.',
+    icon: '🏃🐜'
+  },
+
+  MARAUDER: {
+    id: 'soldier',
+    name: 'Marauder',
+    cost: { food: 20, minerals: 5 },
+    hatchTime: 1,
+    maxHealth: 33,
+    attack: 11,
+    defense: 1,
+    moveRange: 2,
+    attackRange: 1,
+    resourceGatherRate: 3,
+    description: 'Balanced fighter with good health and damage.',
+    icon: '⚔️🐜'
+  },
+
+  BULLET: {
+    id: 'tank',
+    name: 'Bullet Ant',
+    cost: { food: 35, minerals: 15 },
+    requiresQueenTier: 'swarmQueen', // Locked behind Swarm Queen
+    hatchTime: 2,
+    maxHealth: 55,
+    attack: 24,
+    defense: 2,
+    moveRange: 2,
+    attackRange: 1,
+    resourceGatherRate: 0.5,
+    description: 'Expensive, but incredibly strong and durable.',
+    icon: '🛡️🐜'
+  },
+
+  ACID: {
+    id: 'spitter',
+    name: 'Acid Ant',
+    cost: { food: 12, minerals: 7 },
+    hatchTime: 1,
+    maxHealth: 18,
+    attack: 9,
+    defense: 0,
+    moveRange: 2,
+    attackRange: 2,
+    resourceGatherRate: 0.5,
+    description: 'Ranged glass cannon. High damage from a distance but fragile.',
+    icon: '💧🐜'
+  },
+
+  BOMBER: {
+    id: 'bomber',
+    name: 'Acid Bomber',
+    cost: { food: 8, minerals: 9 },
+    requiresQueenTier: 'broodQueen', // Unlocked by the first queen upgrade
+    hatchTime: 1,
+    maxHealth: 20,
+    attack: 18, // Detonation damage - acid ignores defense
+    defense: 0,
+    moveRange: 2,
+    attackRange: 2,
+    splashDamage: true,
+    splashRadius: 1, // affects adjacent hexes
+    resourceGatherRate: 0.5,
+    description: 'Explodes for 18, ignores defense',
+    icon: '💣🐜'
+  },
+
+  BOMBARDIER: {
+    id: 'bombardier',
+    name: 'Bombardier',
+    cost: { food: 20, minerals: 15},
+    requiresQueenTier: 'broodQueen', // Unlocked by the first queen upgrade
+    hatchTime: 1,
+    maxHealth: 25,
+    attack: 15,
+    defense: 0,
+    moveRange: 2,
+    attackRange: 3,
+    minAttackRange: 2, // Cannot attack adjacent enemies
+    cannotMoveAndAttack: true, // Cannot move and attack in same turn
+    resourceGatherRate: 0,
+    description: 'Long-range artillery. Cannot attack adjacent enemies or move and shoot.',
+    icon: '🎯🐜'
+  },
+
+  DRONE: {
+    id: 'drone',
+    name: 'Worker Drone',
+    cost: { food: 10, minerals: 0 },
+    hatchTime: 0,
+    maxHealth: 15,
+    attack: 4,
+    defense: 0,
+    moveRange: 2,
+    attackRange: 1,
+    canBuildAnthill: true, // Drones can build anthills on resource nodes
+    resourceGatherRate: 5,
+    // Attack is deliberately minimal - drones are economy, not combat
+
+    description: 'Poor combatant but can build anthills to generate passive income.',
+    icon: '⛏️🐜'
+  },
+
+  // Campaign-only: a Drone wearing a crown, carrying the old queen's
+  // scent-mark. Never hatched; placed by levels that need an escort.
+  // Buildable from campaign level 8 on: Deploy turns it into a Broodwarden, a
+  // forward egg layer. Level 7's escort Emissary cannot deploy (its roster
+  // has no Emissary).
+  EMISSARY: {
+    id: 'emissary',
+    name: "Queen's Emissary",
+    cost: { food: 25, minerals: 15 },
+    hatchTime: 1,
+    maxHealth: 15,
+    attack: 4,
+    defense: 0,
+    moveRange: 3,
+    attackRange: 1,
+    resourceGatherRate: 0,
+    description: "Carries the queen's scent-mark. Deploy it anywhere to become a Broodwarden: a young queen with 2 egg spots.",
+    icon: '👑🐜'
+  },
+
+  // A deployed Emissary spends one turn wrapped in a cocoon before it opens
+  // into a Broodwarden. It cannot do anything while it pupates.
+  BROODWARDEN_COCOON: {
+    id: 'broodwardenCocoon',
+    name: 'Broodwarden Cocoon',
+    cost: { food: 9999, minerals: 9999 }, // made by deploying an Emissary
+    campaignOnly: true,
+    drawSize: 64,
+    cannotMove: true,
+    hatchTime: 0,
+    maxHealth: 20,
+    attack: 0,
+    defense: 2,
+    moveRange: 0,
+    attackRange: 0,
+    resourceGatherRate: 0,
+    description: 'A deployed Emissary, pupating. Opens into a Broodwarden next turn.',
+    icon: '🐛👑'
+  },
+
+  // A deployed Emissary: a young queen that guards a forward brood. A fat,
+  // rooted egg layer: never moves or burrows, cannot attack or heal - she only
+  // lays eggs on her two egg spots, with no energy cost.
+  BROODWARDEN: {
+    id: 'broodwarden',
+    name: 'Broodwarden',
+    cost: { food: 9999, minerals: 9999 }, // made by deploying an Emissary
+    campaignOnly: true,
+    drawSize: 64, // a little smaller than a full queen
+    cannotMove: true,
+    hatchTime: 0,
+    maxHealth: 30,
+    attack: 0,
+    defense: 1,
+    moveRange: 0,
+    attackRange: 0,
+    resourceGatherRate: 0,
+    description: 'A young queen grown from an Emissary. Cannot move, attack or heal; lays eggs on her 2 egg spots.',
+    icon: '🥚👑'
+  },
+
+  // Campaign-only cordyceped bugs that guard the infected old queen.
+  // `large`: drawn 1.5x the size of an ant (still one hex).
+  TERMITE: {
+    id: 'termite',
+    name: 'Cordyceped Termite',
+    cost: { food: 9999, minerals: 9999 }, // never buildable
+    campaignOnly: true,
+    large: true,
+    hatchTime: 0,
+    maxHealth: 90,
+    attack: 18,
+    defense: 4,
+    moveRange: 1,
+    attackRange: 1,
+    resourceGatherRate: 0,
+    description: 'A fungus-ridden termite. Slow, but tougher than a Bullet Ant.',
+    icon: '🍄🪲'
+  },
+
+  // `meleeReach`: hits from 2 hexes but fights as melee - its targets strike
+  // back, and it strikes back - and it uses melee upgrades.
+  MANTIS: {
+    id: 'mantis',
+    name: 'Cordyceped Praying Mantis',
+    cost: { food: 9999, minerals: 9999 }, // never buildable
+    campaignOnly: true,
+    large: true,
+    meleeReach: true,
+    hatchTime: 0,
+    maxHealth: 45,
+    attack: 22,
+    defense: 1,
+    moveRange: 2,
+    attackRange: 2,
+    resourceGatherRate: 0,
+    description: 'A fungus-ridden mantis. Strikes from 2 hexes, but fights as melee.',
+    icon: '🍄🦗'
+  },
+
+  // The final boss (level 12): rooted to the Throne Mound, never moves. Her
+  // powers are in campaign/boss.js.
+  OLD_QUEEN: {
+    id: 'oldQueen',
+    name: 'The Old Queen (infected)',
+    cost: { food: 9999, minerals: 9999 }, // never buildable
+    campaignOnly: true,
+    large: true,
+    boss: true,
+    hatchTime: 0,
+    maxHealth: 200,
+    attack: 25,
+    defense: 5,
+    moveRange: 0,
+    attackRange: 1,
+    resourceGatherRate: 0,
+    description: 'Vexxara\'s mother, rooted to the mound by the fungus. Spore burst every 3 turns, mind control every 4.',
+    icon: '🍄👑'
+  },
+
+  HEALER: {
+    id: 'healer',
+    name: 'Weaver Ant',
+    cost: { food: 10, minerals: 15 },
+    hatchTime: 1,
+    maxHealth: 20,
+    attack: 0, // Cannot attack
+    defense: 1,
+    moveRange: 2,
+    attackRange: 0, // No attack range
+    resourceGatherRate: 0,
+    requiresQueenTier: 'broodQueen', // First queen upgrade - healing arrives mid-game
+    // Energy system for abilities
+    maxEnergy: 50,
+    startingEnergy: 25, // Starts at half energy
+    energyRegen: 5,
+    // Abilities
+    healRange: 1, // Melee range healing
+    healAmount: 20,
+    healEnergyCost: 15,
+    ensnareRange: 2,
+    ensnareDuration: 3, // turns
+    ensnareEnergyCost: 30,
+    description: 'Support unit that can heal allies and ensnare enemies. Requires Brood Queen.',
+    icon: '✨🐜'
+  },
+
+  CORDYPHAGE: {
+    id: 'cordyphage',
+    name: 'Cordyphage',
+    cost: { food: 15, minerals: 15 },
+    hatchTime: 1,
+    maxHealth: 25,
+    attack: 0, // Cannot attack
+    defense: 1,
+    moveRange: 2,
+    attackRange: 0, // No attack range
+    resourceGatherRate: 0,
+    requiresQueenTier: 'swarmQueen', // Locked behind Swarm Queen
+    // Energy system for abilities
+    maxEnergy: 60,
+    startingEnergy: 50, // Enough to purge on arrival - at 25 the signature
+    // ability was unusable for its first three turns while energy regenerated
+    energyRegen: 15,
+    // Abilities
+    cordycepsRange: 1, // Melee range for mind control
+    cordycepsEnergyCost: 50, // Expensive ability
+    plagueRange: 3, // Range for plague
+    plagueDuration: 3, // turns
+    plagueHealthLoss: 0.20, // 20% health per turn
+    plagueEnergyCost: 25,
+    description: 'Dark spellcaster that can mind control enemies with Cordyceps Purge and inflict Plague. Requires Swarm Queen.',
+    icon: '☠️🐜'
+  }
+};
+
+// Helper function to get ant type by ID (e.g., 'soldier', 'tank', 'spitter')
+// Melee for combat purposes: range 1, or a long-reach fighter like the Mantis
+export function isMeleeType(antType) {
+  return !!antType && (antType.attackRange <= 1 || !!antType.meleeReach);
+}
+
+export function getAntTypeById(id) {
+  return Object.values(AntTypes).find(type => type.id === id);
+}
+
+export const ResourceTypes = {
+  FOOD: 'food',
+  MINERALS: 'minerals'
+};
+
+export const GameConstants = {
+  MOVES_PER_TURN: 3,
+  STARTING_RESOURCES: {
+    food: 25,
+    minerals: 0
+  },
+  HEX_GRID_SIZE: 10, // 10x10 hex grid
+  RESOURCE_SPAWN_COUNT: 6, // number of resource nodes on map
+  ANTHILL_BUILD_PROGRESS_REQUIRED: 2, // Number of drone actions needed to complete an anthill
+  ANTHILL_BUILD_COST: 5, // Food cost to start building an anthill
+  // Total resources an anthill yields before it depletes and the node respawns
+  // elsewhere. Anthills are deliberately temporary - this is the whole lifespan.
+  ANTHILL_TOTAL_YIELD: {
+    food: 56,
+    minerals: 40 // 10 turns at 4 a turn
+  },
+  ANTHILL_PASSIVE_INCOME: {
+    food: 5,  // Per turn for food anthills
+    minerals: 4 // Per turn for mineral anthills
+  },
+  // Queen energy system
+  QUEEN_BASE_ENERGY: 25,
+  QUEEN_BASE_ENERGY_REGEN: 10,
+  EGG_LAY_ENERGY_COST: 5,
+  HEAL_ENERGY_COST: 10,
+  HEAL_AMOUNT: 15,
+  QUEEN_BASE_FOOD_INCOME: 5,
+  // Tree bonuses
+  TREE_DEFENSE_BONUS: 1,
+  // Cannibalism upgrade
+  CANNIBALISM_FOOD_GAIN: 5,
+  CANNIBALISM_MINERAL_GAIN: 3,
+  // Map sizes for multiplayer
+  TRIANGLE_SIDE_LENGTH: 15, // 3-player triangle map (15 hexes per side)
+  SQUARE_SIZE: 16 // 4-player square map (16x12 hexes, ~149 hexes)
+};
+
+export const Upgrades = {
+  // Listed in tier order (the Upgrades menu shows them this way): base queen,
+  // then Brood Queen, then Swarm Queen
+  MELEE_ATTACK: {
+    id: 'meleeAttack',
+    name: 'Melee Attack',
+    description: '+1 Attack for melee units',
+    icon: '⚔️',
+    maxTier: 3,
+    costs: [
+      { food: 15, minerals: 8 }, // Tier 1
+      { food: 20, minerals: 12 }, // Tier 2
+      { food: 25, minerals: 16 }  // Tier 3
+    ]
+  },
+  RANGED_ATTACK: {
+    id: 'rangedAttack',
+    name: 'Ranged Attack',
+    description: '+1 Attack for ranged units',
+    icon: '🏹',
+    maxTier: 3,
+    costs: [
+      { food: 15, minerals: 8 }, // Tier 1
+      { food: 20, minerals: 12 }, // Tier 2
+      { food: 25, minerals: 16 }  // Tier 3
+    ]
+  },
+  DEFENSE: {
+    id: 'defense',
+    name: 'Defense',
+    description: '+2 Defense for all units per tier',
+    icon: '🛡️',
+    // Capped at 2 tiers: at +6 the flat damage formula floors most low-attack
+    // units at 1 damage, which pushes past "armor piercing" into unkillable.
+    maxTier: 2,
+    costs: [
+      { food: 20, minerals: 12 }, // Tier 1
+      { food: 25, minerals: 16 }  // Tier 2
+    ]
+  },
+  CANNIBALISM: {
+    id: 'cannibalism',
+    name: 'Cannibalism',
+    description: '+5 Food and +3 Minerals when melee units kill',
+    icon: '🍖',
+    maxTier: 1,
+    requiresQueenTier: 'broodQueen',
+    costs: [
+      { food: 15, minerals: 15 }  // Tier 1
+    ]
+  },
+  BURROW: {
+    id: 'burrow',
+    name: 'Burrow',
+    description: 'Unlock burrow for ambush & healing (5%/turn, Marauders 10%). Marauders move 2 hexes while burrowed',
+    icon: '🕳️',
+    maxTier: 1,
+    requiresQueenTier: 'broodQueen',
+    costs: [
+      { food: 15, minerals: 15 }  // Tier 1
+    ]
+  },
+  ANTHILL_DURABILITY: {
+    id: 'anthillDurability',
+    name: 'Reinforced Anthills',
+    description: '+50% Anthill health, +1 Defense for units standing on your anthills, and they heal 10% a turn instead of 5%',
+    icon: '🏰',
+    maxTier: 1,
+    requiresQueenTier: 'broodQueen',
+    costs: [
+      { food: 15, minerals: 15 }  // Tier 1
+    ]
+  },
+  CONNECTED_TUNNELS: {
+    id: 'connectedTunnels',
+    name: 'Connected Tunnels',
+    description: 'Units on anthills can teleport to other friendly anthills',
+    icon: '🌀',
+    maxTier: 1,
+    requiresQueenTier: 'swarmQueen', // Locked behind Swarm Queen
+    costs: [
+      { food: 10, minerals: 10 }  // Tier 1
+    ]
+  },
+  CORDYCEPS_PURGE: {
+    id: 'cordycepsPurge',
+    name: 'Cordyceps Purge',
+    description: 'Unlocks mind control ability for Cordyphage (50⚡, Melee Range)',
+    icon: '🧠',
+    maxTier: 1,
+    requiresQueenTier: 'swarmQueen', // Locked behind Swarm Queen
+    costs: [
+      { food: 10, minerals: 15 }
+    ]
+  }
+  // REVEAL upgrade removed - Reveal is now innate to Brood Queen tier
+};
+
+// Map shapes for multiplayer
+export const MapShape = {
+  RECTANGLE: 'rectangle', // 2-player (10x10)
+  RIVER: 'river',         // 2-player hexagon with a river across the middle (see getRiverLayout in hexUtils.js)
+  LAKE: 'lake',           // small 2-player hexagon with a lake in the middle (see getLakeHexes in hexUtils.js)
+  TRIANGLE: 'triangle',   // 3-player (equilateral triangle, 15 hexes per side)
+  SQUARE: 'square'        // 4-player (square/diamond shape)
+};
+
+// Team identifiers
+export const Teams = {
+  NONE: null,
+  TEAM_A: 'A',
+  TEAM_B: 'B'
+};
+
+// Queen tier progression
+export const QueenTiers = {
+  queen: {
+    name: 'Queen',
+    spawningSpots: 2,
+    maxEnergy: 25,
+    energyRegen: 4,
+    foodIncome: 5
+  },
+  broodQueen: {
+    name: 'Brood Queen',
+    spawningSpots: 4,
+    maxEnergy: 50,
+    energyRegen: 7,
+    foodIncome: 6,
+    cost: { food: 20, minerals: 10 }
+  },
+  swarmQueen: {
+    name: 'Swarm Queen',
+    spawningSpots: 6,
+    maxEnergy: 75,
+    energyRegen: 10,
+    foodIncome: 7,
+    cost: { food: 20, minerals: 15 }
+  }
+};
+
+// True when a queen of `queenTier` may hatch a unit that needs `requiredTier`
+// (a higher tier keeps everything the lower ones unlocked)
+const QUEEN_TIER_ORDER = ['queen', 'broodQueen', 'swarmQueen'];
+export function meetsQueenTier(requiredTier, queenTier) {
+  if (!requiredTier) return true;
+  return QUEEN_TIER_ORDER.indexOf(queenTier || 'queen') >= QUEEN_TIER_ORDER.indexOf(requiredTier);
+}
