@@ -98,8 +98,8 @@ describe.each(['medium', 'large'])('river on a %s 2-player map', (mapSize) => {
   });
 
   test('a unit next to the water cannot move across it', () => {
-    const start = new HexCoord(1, -2); // north bank, directly above the water hex at (1,-1)
-    expect(water.some(w => key(w) === '1,-1')).toBe(true);
+    const start = new HexCoord(1, -1); // north bank, directly above the water tile at (1,0)
+    expect(water.some(w => key(w) === '1,0')).toBe(true);
     const moves = getMovementRangeWithPaths(start, 1, R, [], [], state.mapShape);
     moves.forEach(m => {
       expect(isValidHex(m.hex, R, state.mapShape)).toBe(true);
@@ -123,9 +123,9 @@ describe('lake on the small 2-player map', () => {
   const lake = getLakeHexes();
   const queens = Object.values(state.ants).filter(a => a.type === 'queen');
 
-  test('is the centre hex plus the ring around it except its top and bottom, the same every game, and there is no river', () => {
+  test('is the middle 3x3 block except its top and bottom middle, the same every game, and there is no river', () => {
     expect(state.mapShape).toBe('lake');
-    expect(lake.map(key).sort()).toEqual(['-1,0', '-1,1', '0,0', '1,-1', '1,0'].sort());
+    expect(lake.map(key).sort()).toEqual(['-1,-1', '-1,0', '-1,1', '0,0', '1,-1', '1,0', '1,1'].sort());
     lake.forEach(w => expect(isValidHex(w, R, state.mapShape)).toBe(false));
     getRiverLayout(R).water.filter(w => !lake.some(l => key(l) === key(w)))
       .forEach(w => expect(isValidHex(w, R, state.mapShape)).toBe(true));
@@ -198,6 +198,10 @@ test('the computer player gets units across the river', async () => {
   const south = Object.values(state.ants).find(a => a.type === 'queen' && a.position.r > 0);
   const owner = Object.values(state.ants).find(a => a.type === 'queen' && a.position.r < 0).owner;
   state.ants.test_soldier = { id: 'test_soldier', type: 'soldier', owner, position: new HexCoord(2, -2), health: 10, maxHealth: 10 };
+  // Square version: with everyone's longer reach, the south drones and scout
+  // make the crossing look too dangerous for a lone 10-health soldier, so
+  // they are taken off - this test is about finding the way across.
+  Object.values(state.ants).forEach(a => { if (a.owner === south.owner && a.type !== 'queen') delete state.ants[a.id]; });
   let crossed = false;
   for (let turn = 0; turn < 12 && !crossed; turn++) {
     state.currentPlayer = owner;

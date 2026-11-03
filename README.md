@@ -1,3 +1,20 @@
+# Ant Wars Square
+
+The square-tile version of Battle Ants (Ant Wars). Play it at
+https://nidoking41.github.io/Ant-Wars-Square/
+
+How it differs from the hex game:
+- The board is square tiles. Units move and attack up, down, left and right
+  only (no diagonals), so distance is the number of straight steps.
+- Every unit moves 1 tile further, and every ranged reach (2 or more) is 1
+  tile longer, than in the hex game.
+- A queen lays eggs on the 8 tiles around her (corners too).
+- The Bombardier's splash is an L-shaped corner of 3 tiles.
+- Scrimmage maps are redrawn as square maps. Campaign levels still use the
+  hex art, converted to squares automatically, and will be redrawn later.
+- Online games use their own lobbies (square_lobbies / square_games), so they
+  never mix with the hex game.
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).

@@ -349,7 +349,7 @@ function OnlineMultiplayerLobby({ onEnterGameLobby, onBack }) {
           Number of Players:
         </label>
         <div style={{ display: 'flex', gap: '10px' }}>
-          {[2, 3, 4].map(num => (
+          {[2].map(num => ( // square version: 2 players only for now
             <button
               key={num}
               onClick={() => setPlayerCount(num)}

@@ -1,5 +1,8 @@
 // Ant type definitions with stats and abilities
 
+// ANT WARS SQUARE: every unit moves 1 tile further than in the hex game,
+// and every ranged reach (2 or more) is 1 tile longer, because a range on
+// 4-direction squares covers fewer tiles than the same range on hexes.
 export const AntTypes = {
   QUEEN: {
     id: 'queen',
@@ -9,8 +12,8 @@ export const AntTypes = {
     maxHealth: 60,
     attack: 6,
     defense: 2,
-    moveRange: 1,
-    attackRange: 2, // Queens can attack 2 spaces away
+    moveRange: 2,
+    attackRange: 3, // Queens can attack 3 tiles away
     resourceGatherRate: 0,
     revealEnergyCost: 20, // Energy cost for Reveal ability (unlocked at Brood Queen)
     description: 'The heart of your colony. If she dies, you lose!',
@@ -46,7 +49,7 @@ export const AntTypes = {
     maxHealth: 25,
     attack: 6,
     defense: 0,
-    moveRange: 3,
+    moveRange: 4,
     attackRange: 1,
     resourceGatherRate: 3,
     description: 'Fast, cheap, and weak. Perfect for early game exploration.',
@@ -61,7 +64,7 @@ export const AntTypes = {
     maxHealth: 33,
     attack: 11,
     defense: 1,
-    moveRange: 2,
+    moveRange: 3,
     attackRange: 1,
     resourceGatherRate: 3,
     description: 'Balanced fighter with good health and damage.',
@@ -77,7 +80,7 @@ export const AntTypes = {
     maxHealth: 55,
     attack: 24,
     defense: 2,
-    moveRange: 2,
+    moveRange: 3,
     attackRange: 1,
     resourceGatherRate: 0.5,
     description: 'Expensive, but incredibly strong and durable.',
@@ -92,8 +95,8 @@ export const AntTypes = {
     maxHealth: 18,
     attack: 9,
     defense: 0,
-    moveRange: 2,
-    attackRange: 2,
+    moveRange: 3,
+    attackRange: 3,
     resourceGatherRate: 0.5,
     description: 'Ranged glass cannon. High damage from a distance but fragile.',
     icon: '💧🐜'
@@ -108,8 +111,8 @@ export const AntTypes = {
     maxHealth: 20,
     attack: 18, // Detonation damage - acid ignores defense
     defense: 0,
-    moveRange: 2,
-    attackRange: 2,
+    moveRange: 3,
+    attackRange: 3,
     splashDamage: true,
     splashRadius: 1, // affects adjacent hexes
     resourceGatherRate: 0.5,
@@ -126,8 +129,8 @@ export const AntTypes = {
     maxHealth: 25,
     attack: 15,
     defense: 0,
-    moveRange: 2,
-    attackRange: 3,
+    moveRange: 3,
+    attackRange: 4,
     minAttackRange: 2, // Cannot attack adjacent enemies
     cannotMoveAndAttack: true, // Cannot move and attack in same turn
     resourceGatherRate: 0,
@@ -143,7 +146,7 @@ export const AntTypes = {
     maxHealth: 15,
     attack: 4,
     defense: 0,
-    moveRange: 2,
+    moveRange: 3,
     attackRange: 1,
     canBuildAnthill: true, // Drones can build anthills on resource nodes
     resourceGatherRate: 5,
@@ -166,7 +169,7 @@ export const AntTypes = {
     maxHealth: 15,
     attack: 4,
     defense: 0,
-    moveRange: 3,
+    moveRange: 4,
     attackRange: 1,
     resourceGatherRate: 0,
     description: "Carries the queen's scent-mark. Deploy it anywhere to become a Broodwarden: a young queen with 2 egg spots.",
@@ -226,7 +229,7 @@ export const AntTypes = {
     maxHealth: 90,
     attack: 18,
     defense: 4,
-    moveRange: 1,
+    moveRange: 2,
     attackRange: 1,
     resourceGatherRate: 0,
     description: 'A fungus-ridden termite. Slow, but tougher than a Bullet Ant.',
@@ -246,10 +249,10 @@ export const AntTypes = {
     maxHealth: 45,
     attack: 22,
     defense: 1,
-    moveRange: 2,
-    attackRange: 2,
+    moveRange: 3,
+    attackRange: 3,
     resourceGatherRate: 0,
-    description: 'A fungus-ridden mantis. Strikes from 2 hexes, but fights as melee.',
+    description: 'A fungus-ridden mantis. Strikes from 3 tiles, but fights as melee.',
     icon: '🍄🦗'
   },
 
@@ -281,7 +284,7 @@ export const AntTypes = {
     maxHealth: 20,
     attack: 0, // Cannot attack
     defense: 1,
-    moveRange: 2,
+    moveRange: 3,
     attackRange: 0, // No attack range
     resourceGatherRate: 0,
     requiresQueenTier: 'broodQueen', // First queen upgrade - healing arrives mid-game
@@ -293,7 +296,7 @@ export const AntTypes = {
     healRange: 1, // Melee range healing
     healAmount: 20,
     healEnergyCost: 15,
-    ensnareRange: 2,
+    ensnareRange: 3,
     ensnareDuration: 3, // turns
     ensnareEnergyCost: 30,
     description: 'Support unit that can heal allies and ensnare enemies. Requires Brood Queen.',
@@ -308,7 +311,7 @@ export const AntTypes = {
     maxHealth: 25,
     attack: 0, // Cannot attack
     defense: 1,
-    moveRange: 2,
+    moveRange: 3,
     attackRange: 0, // No attack range
     resourceGatherRate: 0,
     requiresQueenTier: 'swarmQueen', // Locked behind Swarm Queen
@@ -320,7 +323,7 @@ export const AntTypes = {
     // Abilities
     cordycepsRange: 1, // Melee range for mind control
     cordycepsEnergyCost: 50, // Expensive ability
-    plagueRange: 3, // Range for plague
+    plagueRange: 4, // Range for plague
     plagueDuration: 3, // turns
     plagueHealthLoss: 0.20, // 20% health per turn
     plagueEnergyCost: 25,
@@ -435,7 +438,7 @@ export const Upgrades = {
   BURROW: {
     id: 'burrow',
     name: 'Burrow',
-    description: 'Unlock burrow for ambush & healing (5%/turn, Marauders 10%). Marauders move 2 hexes while burrowed',
+    description: 'Unlock burrow for ambush & healing (5%/turn, Marauders 10%). Marauders move 2 tiles while burrowed',
     icon: '🕳️',
     maxTier: 1,
     requiresQueenTier: 'broodQueen',

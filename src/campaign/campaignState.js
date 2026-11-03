@@ -153,11 +153,12 @@ const heroOf = (state, pid) => state.players?.[pid]?.heroId || null;
 
 // Nearest free, on-map hex to `center` (excluding `center` itself), searched
 // in rings so placement is deterministic.
-function nearestFree(state, center, maxRange = 3) {
+function nearestFree(state, center, maxRange = 3, reserved = null) {
   for (let range = 1; range <= maxRange; range++) {
     const ring = hexesInRange(center, range)
       .filter(h => hexDistance(h, center) === range)
-      .filter(h => isValidHex(h, state.gridRadius, state.mapShape) && !occupiedAt(state, h))
+      .filter(h => isValidHex(h, state.gridRadius, state.mapShape) && !occupiedAt(state, h) &&
+        !(reserved && reserved.has(`${h.q},${h.r}`)))
       .sort((a, b) => (a.q - b.q) || (a.r - b.r));
     if (ring.length) return ring[0];
   }
@@ -235,9 +236,12 @@ export function applyMapLayout(state, rows, legend = {}) {
       ? getSpawningPoolHexes(state.ants[queen.id], getNeighbors, state)
       : [];
     const ordered = [...followers.filter(a => a.type === 'drone'), ...followers.filter(a => a.type !== 'drone')];
+    // Squares: egg spots include the corner tiles, where a level's marker
+    // units may stand - keep those clear for them
+    const marked = new Set(layout.units.map(u => `${u.position.q},${u.position.r}`));
     ordered.forEach(a => {
-      const spot = a.type === 'drone' && eggSpots.find(h => !occupiedAt(state, h));
-      const pos = spot || nearestFree(state, target);
+      const spot = a.type === 'drone' && eggSpots.find(h => !occupiedAt(state, h) && !marked.has(`${h.q},${h.r}`));
+      const pos = spot || nearestFree(state, target, 3, marked);
       if (!pos) return; // no room on this map for the opening units
       state.ants[a.id] = { ...a, position: pos };
     });

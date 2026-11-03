@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import './App.css';
 import { canDeployEmissary, emissaryDeployBlock, deployEmissary, createInitialGameState, endTurn, markAntMoved, canAfford, deductCost, createEgg, canAffordUpgrade, purchaseUpgrade, buildAnthill, hasEnoughEnergy, getEggLayCost, deductEnergy, healAnt, upgradeQueen, canAffordQueenUpgrade, getSpawningPoolHexes, burrowAnt, unburrowAnt, canBurrow, canUnburrow, teleportAnt, getValidTeleportDestinations, healAlly, ensnareEnemy, getValidHealTargets, getValidEnsnareTargets, cordycepsPurge, getValidCordycepsTargets, plagueEnemy, getValidPlagueTargets, revealArea, getAntAttack } from './gameState';
-import { moveAnt, resolveCombat, canAttack, meleeBlockedByCliff, detonateBomber, attackAnthill, attackEgg, calculateDamage, bombardierSplashAttack, getAllowedSplashRotations, resolveAmbush } from './combatSystem';
+import { moveAnt, resolveCombat, canAttack, meleeBlockedByCliff, detonateBomber, attackAnthill, attackEgg, calculateDamage, bombardierSplashAttack, getAllowedSplashRotations, getSplashHexes, resolveAmbush } from './combatSystem';
 import { AntTypes, Upgrades, GameConstants, QueenTiers, getAntTypeById, meetsQueenTier } from './antTypes';
 import { createScrimmageGameState } from './maps/scrimmageMaps';
-import { hexToPixel, getMovementRange, getMovementRangeWithPaths, HexCoord, getNeighbors, hexesInRange, hexDistance, generateTriangleGrid, generateSquareGrid, isValidHex, isMapWater, getMapWaterHexes, cliffAt } from './hexUtils';
+import { hexToPixel, tilePoints, tileSize, getMovementRange, getMovementRangeWithPaths, HexCoord, getNeighbors, hexesInRange, hexDistance, generateTriangleGrid, generateSquareGrid, isValidHex, isMapWater, getMapWaterHexes, cliffAt } from './hexUtils';
 import MultiplayerMenu from './MultiplayerMenu';
 import IntroVideo, { FadeFromBlack } from './IntroVideo';
 import LocalGameSetup from './LocalGameSetup';
@@ -142,20 +142,21 @@ const TERRAIN = {
   mud: { color: '#6c5848', pattern: 'terrainMud' },
   sand: { color: '#ccb482', pattern: 'terrainSand' }
 };
-const HEX_NEIGHBOR_OFFSETS = [[1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1], [1, 0]];
+// The 8 tiles around a tile (corners too), for mud along the water's edge
+const HEX_NEIGHBOR_OFFSETS = [[1, 0], [1, -1], [0, -1], [-1, -1], [-1, 0], [-1, 1], [0, 1], [1, 1]];
 
 // Which kind of ground a hex is. Anything touching water is mud (river banks,
 // the lake shore, the crossings). Everything else is laid out in soft patches
 // by a fixed formula, so a map looks the same every game and for every player.
 // Every term is unchanged when the map is turned half a turn, so both players
 // see the same ground from their end.
-// Cliff sprite per ramp direction (getNeighbors' order: SE, NE, N, NW, SW, S)
-const CLIFF_SPRITES = ['se', 'ne', 'n', 'nw', 'sw', 's'];
+// Cliff sprite per ramp direction (getNeighbors' order: E, N, W, S)
+const CLIFF_SPRITES = ['e', 'n', 'w', 's'];
 
 function getTerrainType(q, r, waterKeys) {
   if (waterKeys && HEX_NEIGHBOR_OFFSETS.some(([dq, dr]) => waterKeys.has(`${q + dq},${r + dr}`))) return 'mud';
-  const x = 1.5 * q;
-  const y = Math.sqrt(3) * (r + q / 2);
+  const x = 1.7 * q;
+  const y = 1.7 * r;
   const lush = 1.1 * Math.sin(x * 0.5) * Math.sin(y * 0.42)
     + 0.9 * Math.cos(x * 0.33 - y * 0.47) * Math.cos(y * 0.21)
     - 0.7 * Math.cos(x * 0.8 + y * 0.35)
@@ -318,7 +319,7 @@ function App() {
   const [attackTarget, setAttackTarget] = useState(null); // Store target enemy when selecting attack position
   const [attackPositions, setAttackPositions] = useState([]); // Valid positions to attack from
   const [movingAnt, setMovingAnt] = useState(null); // {antId, path, currentStep} for animating movement
-  const [bombardierRotation, setBombardierRotation] = useState(0); // 0-5 for the 6 hex directions
+  const [bombardierRotation, setBombardierRotation] = useState(0); // 0-3 for the 4 square directions
   const [bombardierTargetHex, setBombardierTargetHex] = useState(null); // Store the center hex for bombardier splash
   const [showHeroInfo, setShowHeroInfo] = useState(false); // Show hero info modal
   const [showTurnPopup, setShowTurnPopup] = useState(false); // Show "Your Turn!" popup
@@ -553,46 +554,21 @@ function App() {
     return pos1.q === pos2.q && pos1.r === pos2.r;
   };
 
-  // Get 6 neighboring hexes in clockwise order starting from top-right (1 o'clock position)
+  // The 8 tiles around a tile (corners included) in clockwise order from
+  // the top, for the Pheromone Pulse ring effect
   const getClockwiseNeighbors = (centerHex) => {
-    // Clockwise from top-right (1 o'clock)
     const directions = [
-      { q: 1, r: -1 },  // Top-right (1 o'clock)
-      { q: 1, r: 0 },   // Right (3 o'clock)
-      { q: 0, r: 1 },   // Bottom-right (5 o'clock)
-      { q: -1, r: 1 },  // Bottom-left (7 o'clock)
-      { q: -1, r: 0 },  // Left (9 o'clock)
-      { q: 0, r: -1 }   // Top-left (11 o'clock)
+      { q: 0, r: -1 }, { q: 1, r: -1 }, { q: 1, r: 0 }, { q: 1, r: 1 },
+      { q: 0, r: 1 }, { q: -1, r: 1 }, { q: -1, r: 0 }, { q: -1, r: -1 }
     ];
-
     return directions.map(dir =>
       new HexCoord(centerHex.q + dir.q, centerHex.r + dir.r)
     );
   };
 
-  // Get 3 hexes in a triangle for bombardier splash attack based on rotation (0-5)
-  // Triangle has center hex + one hex pointing in rotation direction + one adjacent to the point
-  const getBombardierSplashHexes = (centerHex, rotation) => {
-    // Hex direction vectors (same as in hexUtils getNeighbors)
-    const directions = [
-      { q: 1, r: 0 },   // 0: East
-      { q: 1, r: -1 },  // 1: Northeast
-      { q: 0, r: -1 },  // 2: Northwest
-      { q: -1, r: 0 },  // 3: West
-      { q: -1, r: 1 },  // 4: Southwest
-      { q: 0, r: 1 }    // 5: Southeast
-    ];
-
-    const dir = directions[rotation % 6];
-    const leftDir = directions[(rotation + 5) % 6]; // One direction counter-clockwise from rotation
-
-    // Return center + point in rotation direction + left adjacent to the point
-    return [
-      centerHex, // Center
-      new HexCoord(centerHex.q + dir.q, centerHex.r + dir.r), // Point
-      new HexCoord(centerHex.q + leftDir.q, centerHex.r + leftDir.r) // Left adjacent
-    ];
-  };
+  // The 3 tiles a Bombardier splash hits (an L-shaped corner, see combatSystem)
+  const getBombardierSplashHexes = (centerHex, rotation) =>
+    getSplashHexes(centerHex, rotation).map(h => new HexCoord(h.q, h.r));
 
   // Select your queen without moving the camera (Q key / 👑 button), ready to lay
   const selectQueen = () => {
@@ -4091,15 +4067,11 @@ function App() {
       if (!bombardier || bombardier.type !== 'bombardier') return;
 
       const bombardierType = AntTypes.BOMBARDIER;
-      const distance = Math.max(
-        Math.abs(bombardier.position.q - hex.q),
-        Math.abs(bombardier.position.r - hex.r),
-        Math.abs((-bombardier.position.q - bombardier.position.r) - (-hex.q - hex.r))
-      );
+      const distance = hexDistance(bombardier.position, hex);
 
       // Check range
       if (distance < bombardierType.minAttackRange || distance > bombardierType.attackRange) {
-        showFeedback('Target is out of range! Must be 2-3 hexes away.');
+        showFeedback(`Target is out of range! Must be ${AntTypes.BOMBARDIER.minAttackRange}-${AntTypes.BOMBARDIER.attackRange} tiles away.`);
         return;
       }
 
@@ -4229,7 +4201,7 @@ function App() {
           // Multiple positions - let user choose
           setAttackTarget(clickedEnemy);
           setAttackPositions(attackablePositions);
-          showFeedback('Click on a hex to attack from (highlighted in red)');
+          showFeedback('Click on a tile to attack from (highlighted in red)');
           return;
         }
       }
@@ -4271,11 +4243,7 @@ function App() {
 
         if (resourceAtHex) {
           // Check if drone is adjacent to the resource
-          const distance = Math.max(
-            Math.abs(selectedDrone.position.q - hex.q),
-            Math.abs(selectedDrone.position.r - hex.r),
-            Math.abs((-selectedDrone.position.q - selectedDrone.position.r) - (-hex.q - hex.r))
-          );
+          const distance = hexDistance(selectedDrone.position, hex);
 
           if (distance === 1) {
             // Drone is adjacent to resource - automatically trigger build anthill
@@ -4852,8 +4820,6 @@ function App() {
       const allHexes = [];
       for (let q = -gridRadius; q <= gridRadius; q++) {
         for (let r = -gridRadius; r <= gridRadius; r++) {
-          const s = -q - r;
-          if (Math.abs(q) > gridRadius || Math.abs(r) > gridRadius || Math.abs(s) > gridRadius) continue;
 
           const hex = new HexCoord(q, r);
           if (isMapWater(hex, gridRadius, gameState.mapShape)) continue; // river / lake water
@@ -4883,8 +4849,6 @@ function App() {
       } else {
         for (let q = -gridRadius; q <= gridRadius; q++) {
           for (let r = -gridRadius; r <= gridRadius; r++) {
-            const s = -q - r;
-            if (Math.abs(q) > gridRadius || Math.abs(r) > gridRadius || Math.abs(s) > gridRadius) continue;
             if (isMapWater({ q, r }, gridRadius, gameState.mapShape)) continue; // river / lake water
             candidates.push(new HexCoord(q, r));
           }
@@ -4892,11 +4856,7 @@ function App() {
       }
       for (const hex of candidates) {
         {
-          const distance = Math.max(
-            Math.abs(bombardier.position.q - hex.q),
-            Math.abs(bombardier.position.r - hex.r),
-            Math.abs((-bombardier.position.q - bombardier.position.r) - (-hex.q - hex.r))
-          );
+          const distance = hexDistance(bombardier.position, hex);
 
           // Check if within valid range (2-3 hexes)
           if (distance >= bombardierType.minAttackRange && distance <= bombardierType.attackRange) {
@@ -5052,12 +5012,9 @@ function App() {
       // Rectangle (2-player) - generate hexes the old way
       for (let q = -gridRadius; q <= gridRadius; q++) {
         for (let r = -gridRadius; r <= gridRadius; r++) {
-          const s = -q - r;
-          if (Math.abs(q) <= gridRadius && Math.abs(r) <= gridRadius && Math.abs(s) <= gridRadius) {
-            // River / lake maps: the water hexes are not part of the board
-            if (isMapWater({ q, r }, gridRadius, mapShape)) continue;
-            mapHexes.push(new HexCoord(q, r));
-          }
+          // River / lake maps: the water tiles are not part of the board
+          if (isMapWater({ q, r }, gridRadius, mapShape)) continue;
+          mapHexes.push(new HexCoord(q, r));
         }
       }
     }
@@ -5069,8 +5026,9 @@ function App() {
     const waterKeys = new Set(waterHexes.map(w => `${w.q},${w.r}`));
     // The six corners of a hex, and for the edge from corner i to corner i+1
     // the neighbouring hex on the other side of that edge.
-    const WATER_CORNERS = [[50, 0], [25, -43], [-25, -43], [-50, 0], [-25, 43], [25, 43]];
-    const WATER_EDGE_NEIGHBORS = [[1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1], [1, 0]];
+    const TH = tileSize(hexSize) / 2;
+    const WATER_CORNERS = [[TH, -TH], [-TH, -TH], [-TH, TH], [TH, TH]];
+    const WATER_EDGE_NEIGHBORS = [[0, -1], [-1, 0], [0, 1], [1, 0]];
     for (const w of waterHexes) {
       const { x, y } = hexToPixel(w, hexSize);
       // Absolute corner positions (no per-hex transform), so the texture runs
@@ -5089,7 +5047,7 @@ function App() {
           <polygon points={outline} fill="url(#waterWavesPattern)" />
           {shoreEdges.map(i => {
             const a = pts[i];
-            const b = pts[(i + 1) % 6];
+            const b = pts[(i + 1) % pts.length];
             const a2 = toward(a, 0.78);
             const b2 = toward(b, 0.78);
             const a3 = toward(a, 0.9);
@@ -5262,7 +5220,7 @@ function App() {
                 up from one hex to the next instead of restarting in each. */}
             <polygon
               transform={`translate(${-x}, ${-y})`}
-              points={`${x + 50},${y} ${x + 25},${y - 43} ${x - 25},${y - 43} ${x - 50},${y} ${x - 25},${y + 43} ${x + 25},${y + 43}`}
+              points={tilePoints(x, y, hexSize)}
               fill={fillColor}
               stroke={isSelected ? '#F39C12' : (isBirthingPool && !useBirthingPoolPattern) ? '#4B0082' : isGoalHex ? '#B8860B' : '#333'}
               strokeWidth={isSelected ? '3' : (isBirthingPool && !useBirthingPoolPattern) ? '2.5' : '2'}
@@ -5301,7 +5259,7 @@ function App() {
               // Creep fills the whole hex. It is drawn in board coordinates so
               // the texture runs across neighbouring hexes. Same hexagon twice:
               // flesh and veins, then the pulsing vein glow.
-              const creepHex = `${x + 50},${y} ${x + 25},${y - 43} ${x - 25},${y - 43} ${x - 50},${y} ${x - 25},${y + 43} ${x + 25},${y + 43}`;
+              const creepHex = tilePoints(x, y, hexSize);
               return (
                 <g transform={`translate(${-x}, ${-y})`} style={{ pointerEvents: 'none' }}>
                   <polygon points={creepHex} fill="url(#creepPattern)" stroke="#2a1232" strokeWidth="2" />
@@ -5312,25 +5270,25 @@ function App() {
             {watchedKeys.has(`${q},${r}`) && !waterKeys.has(`${q},${r}`) && (() => {
               // Scent-marked ground: darkened earth with amber pheromone
               // trails that slowly glow, and an amber rim
-              const ringHex = `${x + 50},${y} ${x + 25},${y - 43} ${x - 25},${y - 43} ${x - 50},${y} ${x - 25},${y + 43} ${x + 25},${y + 43}`;
-              const innerHex = `${x + 44},${y} ${x + 22},${y - 38} ${x - 22},${y - 38} ${x - 44},${y} ${x - 22},${y + 38} ${x + 22},${y + 38}`;
+              const ringHex = tilePoints(x, y, hexSize);
+              const innerHex = tilePoints(x, y, hexSize, 5);
               return (
                 <g transform={`translate(${-x}, ${-y})`} style={{ pointerEvents: 'none' }}>
                   <polygon points={ringHex} fill="#2a1206" opacity="0.45" />
                   <polygon points={ringHex} fill="url(#watchGroundPattern)" />
-                  {/* pathLength 120 = 20 per side: a dash wraps every corner, plus one mid-side */}
+                  {/* pathLength 120 = 30 per side */}
                   <polygon points={innerHex} fill="none" stroke="#f8a020" strokeWidth="2" pathLength="120" strokeDasharray="5 5" strokeDashoffset="2.5" strokeLinejoin="round" opacity="0.7">
                     <animate attributeName="opacity" values="0.35;0.85;0.35" dur="3s" repeatCount="indefinite" />
                   </polygon>
                 </g>
               );
             })()}
-            {/* Cliff: raised rock with a sheer face on three sides (50x44 art at 2x) */}
+            {/* Cliff: raised rock with a sheer face on three sides (44x44 art at 2x, gen/square_cliffs.py) */}
             {cliffAt(hex, mapShape) !== undefined && (
               <image
-                x={-50}
-                y={-43}
-                width={100}
+                x={-44}
+                y={-44}
+                width={88}
                 height={88}
                 href={`${process.env.PUBLIC_URL}/sprites/terrain/cliff_${CLIFF_SPRITES[cliffAt(hex, mapShape)]}.png`}
                 style={{ pointerEvents: 'none', imageRendering: 'pixelated' }}
@@ -5602,7 +5560,7 @@ function App() {
             {/* Fog of War overlay - darken non-visible hexes */}
             {!isVisible && (
               <polygon
-                points="50,0 25,-43 -25,-43 -50,0 -25,43 25,43"
+                points={tilePoints(0, 0, hexSize)}
                 fill="rgba(0, 0, 0, 0.7)"
                 style={{ pointerEvents: 'none' }}
               />
@@ -5669,7 +5627,7 @@ function App() {
               }
               for (const anim of pheromoneAnimations) {
                 const neighbors = getClockwiseNeighbors(anim.centerHex);
-                const currentHexIndex = anim.currentStep % 6; // Which of the 6 hexes to show (cycles 0-5)
+                const currentHexIndex = anim.currentStep % neighbors.length; // which surrounding tile to show
                 const targetHex = neighbors[currentHexIndex];
 
                 if (hexEquals(targetHex, hex)) {
@@ -8910,6 +8868,7 @@ function App() {
                 <li><strong>Resources:</strong> Food (<FoodIcon />) and Minerals (<MineralIcon />) are needed to spawn units and purchase upgrades</li>
                 <li><strong>Turn-Based:</strong> Each player takes turns. End your turn when all actions are complete</li>
                 <li><strong>Queen Energy:</strong> Queens have energy for laying eggs and healing. Energy regenerates each round</li>
+                <li><strong>Square tiles:</strong> Units move and attack up, down, left and right only, never diagonally. Ranges are counted in straight steps, so a range looks like a diamond</li>
                 <li><strong>Fog of War:</strong> In multiplayer, you can only see areas within your units' vision range</li>
                 <li><strong>Water:</strong> 2-player maps have water in the middle. Small maps have a lake to walk round; medium and large maps have a river running east to west with three land crossings. Nothing can walk through water, but ranged attacks can shoot across it</li>
                 <li><strong>Camera:</strong> The view centers on your Queen each turn. Use mouse wheel to zoom, middle-click or WASD/arrows to pan</li>
@@ -8996,10 +8955,10 @@ function App() {
               <ul style={{ fontSize: '14px', lineHeight: '1.8' }}>
                 <li><strong>Energy System:</strong> Queens start with {QueenTiers.queen.maxEnergy} energy, regenerate {QueenTiers.queen.energyRegen} per round</li>
                 <li><strong>Laying Eggs:</strong> Costs {GameConstants.EGG_LAY_ENERGY_COST} energy. Eggs hatch after their incubation time and have 10 HP</li>
-                <li><strong>Spawning Pool:</strong> Queens can only lay eggs in adjacent hexes ({QueenTiers.queen.spawningSpots} spots initially, increases with tier upgrades)</li>
+                <li><strong>Spawning Pool:</strong> Queens can only lay eggs on the 8 tiles around them ({QueenTiers.queen.spawningSpots} spots initially, increases with tier upgrades)</li>
                 <li><strong>Healing:</strong> Costs {GameConstants.HEAL_ENERGY_COST} energy to heal a friendly unit for {GameConstants.HEAL_AMOUNT} HP within range 2</li>
                 <li><strong>Passive Income:</strong> Queens generate {QueenTiers.queen.foodIncome} food per turn (increases with tier)</li>
-                <li><strong>Vision:</strong> Queens have 2 hex vision range (same as Scouts)</li>
+                <li><strong>Vision:</strong> Queens have 2 tile vision range (same as Scouts)</li>
                 <li><strong>Brood Queen:</strong> {QueenTiers.broodQueen.cost.food}<FoodIcon /> {QueenTiers.broodQueen.cost.minerals}<MineralIcon /> - {QueenTiers.broodQueen.spawningSpots} spawn spots, {QueenTiers.broodQueen.maxEnergy} max energy, {QueenTiers.broodQueen.energyRegen} regen, {QueenTiers.broodQueen.foodIncome} food/turn, unlocks Weaver Ant, Acid Bomber, Bombardier and the Reveal ability ({AntTypes.QUEEN.revealEnergyCost} energy)</li>
                 <li><strong>Swarm Queen:</strong> {QueenTiers.swarmQueen.cost.food}<FoodIcon /> {QueenTiers.swarmQueen.cost.minerals}<MineralIcon /> - {QueenTiers.swarmQueen.spawningSpots} spawn spots, {QueenTiers.swarmQueen.maxEnergy} max energy, {QueenTiers.swarmQueen.energyRegen} regen, {QueenTiers.swarmQueen.foodIncome} food/turn, unlocks Bullet Ant &amp; Cordyphage</li>
               </ul>

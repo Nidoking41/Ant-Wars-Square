@@ -2,13 +2,14 @@ import { createInitialGameState } from '../gameState';
 import { applyMapLayout } from '../campaign/campaignState';
 import { HexCoord, hexDistance, isValidHex, isMapWater, cliffAt } from '../hexUtils';
 
-// Hand-drawn 2-player Scrimmage maps, three per map size. Layouts use the
-// same ASCII format as the campaign (see campaign/mapLayout.js): '.' ground,
-// '~' water, 'T' tree, 'F' food, 'M' minerals, '1' / '2' the two queens, and
-// the cliff characters ^ v { } [ ]. Every map is the same when turned upside
-// down, so both sides get the same ground.
+// Hand-drawn 2-player Scrimmage maps, three per map size, in square art (see
+// campaign/mapLayout.js): one character per tile, '.' ground, '~' water,
+// 'T' tree, 'F' food, 'M' minerals, '1' / '2' the two queens, and the cliff
+// characters ^ v < > (the side the ramp faces). Every map is the same when
+// turned upside down, so both sides get the same ground, and the 8 tiles
+// round each queen are open ground for her eggs.
 //
-// Alongside these, each size keeps its 'classic' map: the hexagon with the
+// Alongside these, each size keeps its 'classic' map: the square board with the
 // lake or river and randomly dealt resources (built by createInitialGameState).
 
 export const CLASSIC_MAP_ID = 'classic';
@@ -20,23 +21,17 @@ export const SCRIMMAGE_MAPS = [
     name: 'Twin Ponds',
     description: 'Two ponds split the middle into three paths, with a cliff lookout on each side.',
     layout: [
-      '  . . .',
-      '   . .',
-      '  . 2 T',
-      ' . . . .',
-      '. F . F .',
-      ' . T . T',
-      'M . . . .',
-      ' ~ ^ M ~',
-      'T ~ . ~ T',
-      ' ~ M v ~',
-      '. . . . M',
-      ' T . T .',
-      '. F . F .',
-      ' . . . .',
-      '  T 1 .',
-      '   . .',
-      '  . . .'
+      '.T.....T.',
+      '..F.2.F..',
+      'M.......M',
+      '.T.....T.',
+      '.~~.T.~~.',
+      '.~~^.v~~.',
+      '.~~.T.~~.',
+      '.T.....T.',
+      'M.......M',
+      '..F.1.F..',
+      '.T.....T.'
     ]
   },
   {
@@ -45,31 +40,23 @@ export const SCRIMMAGE_MAPS = [
     name: 'Long Hall',
     description: 'A long, narrow tunnel. Little room to go around, so every fight is head-on.',
     layout: [
-      '. . T',
-      ' . .',
-      '. 2 .',
-      ' . .',
-      'F . M',
-      ' T .',
-      '. T ~',
-      ' . F',
-      'M . .',
-      ' T .',
-      '~ . .',
-      ' . ^',
-      '. . .',
-      ' v .',
-      '. . ~',
-      ' . T',
-      '. . M',
-      ' F .',
-      '~ T .',
-      ' . T',
-      'M . F',
-      ' . .',
-      '. 1 .',
-      ' . .',
-      'T . .'
+      'T....',
+      '.....',
+      '..2..',
+      '.....',
+      'F...M',
+      '.T.T.',
+      'M..~.',
+      '.^..F',
+      '~...~',
+      'F..v.',
+      '.~..M',
+      '.T.T.',
+      'M...F',
+      '.....',
+      '..1..',
+      '.....',
+      '....T'
     ]
   },
   {
@@ -78,25 +65,19 @@ export const SCRIMMAGE_MAPS = [
     name: 'Hourglass',
     description: 'Wide nests and a tight waist in the middle, guarded by two cliffs.',
     layout: [
-      ' T . . .',
-      '. . . T .',
-      ' ~ . . .',
-      '  M 2 F',
-      ' . . . M',
-      '  F . .',
-      '   . T',
-      '  . T .',
-      '   ^ .',
-      '    .',
-      '   . v',
-      '  . T .',
-      '   T .',
-      '  . . F',
-      ' M . . .',
-      '  F 1 M',
-      ' . . . ~',
-      '. T . . .',
-      ' . . . T'
+      '.T.....T.',
+      '..M.2.F..',
+      '~F.....M.',
+      '..T...T..',
+      '  ..T..  ',
+      '   ^..   ',
+      '   ...   ',
+      '   ..v   ',
+      '  ..T..  ',
+      '..T...T..',
+      '.M.....F~',
+      '..F.1.M..',
+      '.T.....T.'
     ]
   },
   {
@@ -105,25 +86,19 @@ export const SCRIMMAGE_MAPS = [
     name: 'River Crossing',
     description: 'A river cuts the map corner to corner. Two fords near the edges.',
     layout: [
-      '  . . . T',
-      ' . T . . .',
-      '. . . . . .',
-      ' T . 2 F .',
-      '. F . . . .',
-      ' ~ . . . M',
-      '~ . . T . .',
-      ' M ~ F . .',
-      '. . ~ . . .',
-      ' . ^ ~ v .',
-      '. . . ~ . .',
-      ' . . F ~ M',
-      '. . T . . ~',
-      ' M . . . ~',
-      '. . . . F .',
-      ' . F 1 . T',
-      '. . . . . .',
-      ' . . . T .',
-      '  T . . .'
+      '.M.........',
+      '~..T.2...T.',
+      '.......^...',
+      '..~.....F..',
+      '..F~T......',
+      '....~..M...',
+      '.F..T~T..F.',
+      '...M..~....',
+      '......T~F..',
+      '..F.....~..',
+      '...v.......',
+      '.T...1.T..~',
+      '.........M.'
     ]
   },
   {
@@ -132,27 +107,19 @@ export const SCRIMMAGE_MAPS = [
     name: 'Crater',
     description: 'A ring of land round a crater lake, with cliffs on the rim.',
     layout: [
-      '     .',
-      '    . .',
-      '   T 2 .',
-      '  . . . .',
-      ' . . . . .',
-      '. F M T F .',
-      ' . . ^ . .',
-      '. . . . . .',
-      ' . } ~ M T',
-      'T . ~ ~ . .',
-      ' F . ~ . F',
-      '. . ~ ~ . T',
-      ' T M ~ [ .',
-      '. . . . . .',
-      ' . . v . .',
-      '. F T M F .',
-      ' . . . . .',
-      '  . . . .',
-      '   . 1 T',
-      '    . .',
-      '     .'
+      '   T....   ',
+      '  ...2...  ',
+      ' T.......T ',
+      '.F..M.F..M.',
+      '....T^T....',
+      '.F...~.....',
+      '.T.<~~~>.T.',
+      '.....~...F.',
+      '....TvT....',
+      '.M..F.M..F.',
+      ' T.......T ',
+      '  ...1...  ',
+      '   ....T   '
     ]
   },
   {
@@ -161,31 +128,21 @@ export const SCRIMMAGE_MAPS = [
     name: 'Twin Lanes',
     description: 'A long lake splits the map into two lanes, with one bridge in the middle.',
     layout: [
-      '. . . . .',
-      ' . . . .',
-      '. T 2 T .',
-      ' . . . .',
-      '. . . . .',
-      ' F M . F',
-      'T . ~ . .',
-      ' . ~ ~ .',
-      '. . ~ . .',
-      ' F ~ ~ T',
-      '. . ~ M .',
-      ' . . . .',
-      '. ^ . v .',
-      ' . . . .',
-      '. M ~ . .',
-      ' T ~ ~ F',
-      '. . ~ . .',
-      ' . ~ ~ .',
-      '. . ~ . T',
-      ' F . M F',
-      '. . . . .',
-      ' . . . .',
-      '. T 1 T .',
-      ' . . . .',
-      '. . . . .'
+      '.........',
+      '.T..2..T.',
+      '.........',
+      '.F.M.F...',
+      'T...~...T',
+      '....~F...',
+      '.M..~....',
+      '.^..~..v.',
+      '....~..M.',
+      '...F~....',
+      'T...~...T',
+      '...F.M.F.',
+      '.........',
+      '.T..1..T.',
+      '.........'
     ]
   },
   {
@@ -194,31 +151,21 @@ export const SCRIMMAGE_MAPS = [
     name: 'Great Lake',
     description: 'A big lake in the centre. March round the shore and fight for the cliffs.',
     layout: [
-      '      .',
-      '     . .',
-      '    T 2 .',
-      '   . . . .',
-      '  . . . . .',
-      ' T F . T F .',
-      '  . . M . .',
-      ' ~ . . . . .',
-      '. . . M . T .',
-      ' ~ ^ . . ^ .',
-      '. F . ~ . . .',
-      ' . . ~ ~ . F',
-      '. . ~ ~ ~ . .',
-      ' F . ~ ~ . .',
-      '. . . ~ . F .',
-      ' . v . . v ~',
-      '. T . M . . .',
-      ' . . . . . ~',
-      '  . . M . .',
-      ' . F T . F T',
-      '  . . . . .',
-      '   . . . .',
-      '    . 1 T',
-      '     . .',
-      '      .'
+      '    T....    ',
+      '   ...2...   ',
+      '  T.......T  ',
+      ' .F..M..F... ',
+      '...T.....^...',
+      '.F...~~~...M.',
+      'T..^~~~~~...T',
+      '..F.~~~~~.F..',
+      'T...~~~~~v..T',
+      '.M...~~~...F.',
+      '...v.....T...',
+      ' ...F..M..F. ',
+      '  T.......T  ',
+      '   ...1...   ',
+      '    ....T    '
     ]
   },
   {
@@ -227,43 +174,23 @@ export const SCRIMMAGE_MAPS = [
     name: 'Archipelago',
     description: 'Islands joined by thin land bridges. Long walks and easy ambushes.',
     layout: [
-      '        ~',
-      '       ~ ~',
-      '      ~ . ~',
-      '     ~ . . ~',
-      '      T . .',
-      '     ~ . . ~',
-      '    ~ . 2 T ~',
-      '     . . . .',
-      '    ~ . . F ~',
-      '     ~ . . ~',
-      '    ~ F . .',
-      '   ~ . T M ~',
-      '  ~ ~ ~ . ~',
-      ' ~ . . ~ ~',
-      '~ M T ~ .',
-      ' . . ~ ~ ~   ~ ~',
-      '~ } . ~ F ~ ~ ~',
-      ' . F . . . ~ . ~',
-      '~ . . . . . . . ~',
-      ' ~ . ~ . . . F .',
-      '  ~ ~ ~ F ~ . [ ~',
-      ' ~ ~   ~ ~ ~ . .',
-      '        . ~ T M ~',
-      '       ~ ~ . . ~',
-      '      ~ . ~ ~ ~',
-      '     ~ M T . ~',
-      '      . . F ~',
-      '     ~ . . ~',
-      '    ~ F . . ~',
-      '     . . . .',
-      '    ~ T 1 . ~',
-      '     ~ . . ~',
-      '      . . T',
-      '     ~ . . ~',
-      '      ~ . ~',
-      '       ~ ~',
-      '        ~'
+      '~~~~T....~~~~',
+      '~~~F..2..~~~~',
+      '~~~~.....M~~~',
+      '~~~~.T..F~~~~',
+      '~~~~.~~~~~~~~',
+      '~~~~.~~~~~~~~',
+      '.T...~~~~~~~~',
+      'F..M.~~~~~~~~',
+      '.F.........F.',
+      '~~~~~~~~.M..F',
+      '~~~~~~~~...T.',
+      '~~~~~~~~.~~~~',
+      '~~~~~~~~.~~~~',
+      '~~~~F..T.~~~~',
+      '~~~M.....~~~~',
+      '~~~~..1..F~~~',
+      '~~~~....T~~~~'
     ]
   },
   {
@@ -272,37 +199,29 @@ export const SCRIMMAGE_MAPS = [
     name: 'Highlands',
     description: 'Rolling hills full of cliffs. Hold the high ground to see further.',
     layout: [
-      '   . . . .',
-      '  . T . . .',
-      ' . . . . . .',
-      '. . M 2 T . .',
-      ' . F . . F .',
-      '. . . . . . .',
-      ' F . ^ ^ . {',
-      '. . . ^ . . .',
-      ' . . . F T ~',
-      '. ^ T . . M .',
-      ' . ~ . . . .',
-      '. . . . . . .',
-      ' . . . . ~ .',
-      '. M . . T v .',
-      ' ~ T F . . .',
-      '. . . v . . .',
-      ' ] . v v . F',
-      '. . . . . . .',
-      ' . F . . F .',
-      '. . T 1 M . .',
-      ' . . . . . .',
-      '  . . . T .',
-      '   . . . .'
+      '  .........  ',
+      ' .T.M.2..T.. ',
+      '..F.......F..',
+      '..^...^...^..',
+      '.T..T.F..T...',
+      '..>...~...M..',
+      '.F..^...<..T.',
+      '..T..>.<..T..',
+      '.T..>...v..F.',
+      '..M...~...<..',
+      '...T..F.T..T.',
+      '..v...v...v..',
+      '..F.......F..',
+      ' ..T..1.M.T. ',
+      '  .........  '
     ]
   }
 ];
 
 const CLASSIC_DESCRIPTIONS = {
-  small: 'The original: a hexagon with a lake in the middle and resources dealt at random.',
-  medium: 'The original: a hexagon cut by a river with three crossings, resources dealt at random.',
-  large: 'The original: a big hexagon cut by a river with three crossings, resources dealt at random.'
+  small: 'The original: a square board with a lake in the middle and resources dealt at random.',
+  medium: 'The original: a square board cut by a river with three crossings, resources dealt at random.',
+  large: 'The original: a big square board cut by a river with three crossings, resources dealt at random.'
 };
 
 /** The maps a player can pick for a map size, the classic one first. */
@@ -348,8 +267,8 @@ export function assignPermanentNodes(state) {
   if (queens.length === 0) return state;
   const resources = { ...state.resources };
   // Which queen a hex belongs to: the nearest one, measured straight across
-  // the board (hex steps tie too often); an exact tie goes to neither
-  const px = h => [1.5 * h.q, Math.sqrt(3) * (h.r + h.q / 2)];
+  // the board (tile steps tie too often); an exact tie goes to neither
+  const px = h => [h.q, h.r];
   const ownerOf = pos => {
     const [x, y] = px(pos);
     // straight-line distance first, then rows apart (r) to settle a hex on the middle line

@@ -149,9 +149,11 @@ describe('campaign level 2 - queen larva', () => {
     const treeAt = (q, r) => Object.values(state.trees).some(t => t.position.q === q && t.position.r === r);
     // The layout puts three trees two hexes out on the enemy's side of her
     expect(toward).toBe(-1);
-    [[0, -2], [-1, -1], [1, -2]].forEach(([dq, dr]) => {
-      expect(treeAt(larva.position.q + dq, larva.position.r + dr)).toBe(true);
-    });
+    // (square version: the hex art is converted, so just count them)
+    const shield = Object.values(state.trees).filter(t =>
+      hexDistance(t.position, larva.position) <= 2 && Math.sign(t.position.r - larva.position.r) === toward);
+    expect(shield.length).toBeGreaterThanOrEqual(3);
+    expect(treeAt).toBeDefined();
   });
 
   test('reinforcement waves land beside the enemy queen on their turn, not before', () => {
@@ -657,7 +659,7 @@ describe('custom map layouts', () => {
   });
 
   test('rejects art that has slipped a column and unknown characters', () => {
-    expect(() => parseLayout(['.1'])).toThrow(/off-grid/);
+    // (square art has no checkerboard, so a slipped column can't be caught)
     expect(() => parseLayout([' 1 ', 'x x'], {})).toThrow(/legend/);
     expect(() => parseLayout([' 1 ', '? ?'])).toThrow(/unknown/);
     expect(() => parseLayout(['. .'])).toThrow(/missing player leader/);
@@ -901,9 +903,22 @@ describe('level 7 - The Long Grass', () => {
       campaign: { ...state.campaign, midEvent: { ...state.campaign.midEvent, done: true } } };
     const res = await executeAITurn(awake, 'player2', 'medium', { fogOfWar: true });
     const emissary = state.ants.camp_player1_e1.position;
+    // Square version: the S-shaped path is measured on foot, not straight across
+    const walk = {};
+    const queue = [emissary];
+    walk[`${emissary.q},${emissary.r}`] = 0;
+    for (let i = 0; i < queue.length; i++) {
+      getNeighbors(queue[i]).forEach(n => {
+        const k = `${n.q},${n.r}`;
+        if (k in walk || !isValidHex(n, state.gridRadius, state.mapShape)) return;
+        walk[k] = walk[`${queue[i].q},${queue[i].r}`] + 1;
+        queue.push(n);
+      });
+    }
+    const onFoot = p => walk[`${p.q},${p.r}`];
     hunters.forEach(h => {
       const now = res.gameState.ants[h.id];
-      expect(hexDistance(now.position, emissary)).toBeLessThan(hexDistance(h.position, emissary));
+      expect(onFoot(now.position)).toBeLessThan(onFoot(h.position));
     });
   }, 60000);
 

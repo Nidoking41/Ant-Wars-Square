@@ -6,7 +6,6 @@ import { getMapWaterHexes, HexCoord } from '../hexUtils';
 // Map choice for the Scrimmage setup screens: one small picture per map for
 // the chosen size, and the picked map's description underneath.
 
-const SQRT3 = Math.sqrt(3);
 const GRID_RADIUS = { small: 4, medium: 5, large: 6 };
 
 // Everything a thumbnail draws, as { land, water, food, minerals, trees, cliffs, queens }
@@ -24,14 +23,14 @@ function thumbData(map) {
       queens: [l.leaders.player1, l.leaders.player2].filter(Boolean)
     };
   }
-  // Classic: the hexagon with its lake (small) or river (medium, large)
+  // Classic: the square board with its lake (small) or river (medium, large)
   const radius = GRID_RADIUS[map.size] || 6;
   const water = getMapWaterHexes(radius, radius <= 4 ? 'lake' : 'river');
   const wet = new Set(water.map(w => `${w.q},${w.r}`));
   const land = [];
   for (let q = -radius; q <= radius; q++) {
     for (let r = -radius; r <= radius; r++) {
-      if (Math.abs(q + r) <= radius && !wet.has(`${q},${r}`)) land.push(new HexCoord(q, r));
+      if (!wet.has(`${q},${r}`)) land.push(new HexCoord(q, r));
     }
   }
   return { land, water, food: [], minerals: [], trees: [], cliffs: [], queens: [new HexCoord(0, radius - 1), new HexCoord(0, -(radius - 1))] };
@@ -40,9 +39,9 @@ function thumbData(map) {
 function MapThumb({ map, size = 84 }) {
   const data = useMemo(() => thumbData(map), [map]);
   const all = [...data.land, ...data.water];
-  const pts = all.map(h => ({ x: 1.5 * h.q, y: SQRT3 * (h.r + h.q / 2) }));
-  const minX = Math.min(...pts.map(p => p.x)) - 1, maxX = Math.max(...pts.map(p => p.x)) + 1;
-  const minY = Math.min(...pts.map(p => p.y)) - 1, maxY = Math.max(...pts.map(p => p.y)) + 1;
+  const pts = all.map(h => ({ x: h.q, y: h.r }));
+  const minX = Math.min(...pts.map(p => p.x)) - 0.6, maxX = Math.max(...pts.map(p => p.x)) + 0.6;
+  const minY = Math.min(...pts.map(p => p.y)) - 0.6, maxY = Math.max(...pts.map(p => p.y)) + 0.6;
   const key = h => `${h.q},${h.r}`;
   const sets = {
     food: new Set(data.food.map(key)),
@@ -61,8 +60,8 @@ function MapThumb({ map, size = 84 }) {
     return '#a07c50';
   };
   const hexPoints = h => {
-    const cx = 1.5 * h.q, cy = SQRT3 * (h.r + h.q / 2);
-    return [0, 1, 2, 3, 4, 5].map(i => `${cx + Math.cos(Math.PI / 3 * i)},${cy + Math.sin(Math.PI / 3 * i)}`).join(' ');
+    const x = h.q, y = h.r;
+    return `${x - 0.5},${y - 0.5} ${x + 0.5},${y - 0.5} ${x + 0.5},${y + 0.5} ${x - 0.5},${y + 0.5}`;
   };
   return (
     <svg width={size} height={size} viewBox={`${minX} ${minY} ${maxX - minX} ${maxY - minY}`} preserveAspectRatio="xMidYMid meet">

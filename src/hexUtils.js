@@ -20,95 +20,87 @@ export class HexCoord {
   }
 }
 
-// Get all 6 neighbors of a hex
+// ANT WARS SQUARE: the board is made of square tiles. The coordinate names
+// are kept from the hex game so the rest of the code works unchanged:
+//   q = column (grows to the right), r = row (grows downward).
+// Units move and attack in 4 directions only (no diagonals), so the distance
+// between two tiles is the number of straight steps between them
+// (|dq| + |dr|), and a range is a diamond shape.
+
+// The 4 neighbours of a tile, in a fixed order: east, north, west, south.
+// (Cliff ramp directions use these same index numbers.)
+export const SQUARE_DIRECTIONS = [
+  { q: 1, r: 0 },
+  { q: 0, r: -1 },
+  { q: -1, r: 0 },
+  { q: 0, r: 1 }
+];
+
 export function getNeighbors(hex) {
-  const directions = [
-    { q: 1, r: 0 },
-    { q: 1, r: -1 },
-    { q: 0, r: -1 },
-    { q: -1, r: 0 },
-    { q: -1, r: 1 },
-    { q: 0, r: 1 }
-  ];
-
-  return directions.map(dir => new HexCoord(hex.q + dir.q, hex.r + dir.r));
+  return SQUARE_DIRECTIONS.map(dir => new HexCoord(hex.q + dir.q, hex.r + dir.r));
 }
 
-// Calculate distance between two hexes
+// Number of straight steps between two tiles
 export function hexDistance(a, b) {
-  return (Math.abs(a.q - b.q) + Math.abs(a.q + a.r - b.q - b.r) + Math.abs(a.r - b.r)) / 2;
+  return Math.abs(a.q - b.q) + Math.abs(a.r - b.r);
 }
 
-// Get all hexes within a certain range
+// Every tile within `range` steps (a diamond), including the centre
 export function hexesInRange(center, range) {
   const results = [];
   for (let q = -range; q <= range; q++) {
-    for (let r = Math.max(-range, -q - range); r <= Math.min(range, -q + range); r++) {
-      const hex = new HexCoord(center.q + q, center.r + r);
-      results.push(hex);
+    const rest = range - Math.abs(q);
+    for (let r = -rest; r <= rest; r++) {
+      results.push(new HexCoord(center.q + q, center.r + r));
     }
   }
   return results;
 }
 
-// Convert hex coordinates to pixel position
+// Width of one square tile in pixels for a given "hexSize". Matches the
+// height of the old hex tiles, so every sprite keeps its size.
+export const tileSize = hexSize => Math.round(Math.sqrt(3) * hexSize);
+
+// Centre of a tile in pixels
 export function hexToPixel(hex, hexSize) {
-  const x = hexSize * (3/2 * hex.q);
-  const y = hexSize * (Math.sqrt(3)/2 * hex.q + Math.sqrt(3) * hex.r);
-  return { x, y };
+  const t = tileSize(hexSize);
+  return { x: t * hex.q, y: t * hex.r };
 }
 
-// Convert pixel position to hex coordinates
+// Tile under a pixel position
 export function pixelToHex(x, y, hexSize) {
-  const q = (2/3 * x) / hexSize;
-  const r = (-1/3 * x + Math.sqrt(3)/3 * y) / hexSize;
-  return hexRound(q, r);
+  const t = tileSize(hexSize);
+  return new HexCoord(Math.round(x / t), Math.round(y / t));
 }
 
-// Round fractional hex coordinates to nearest hex
-function hexRound(q, r) {
-  const s = -q - r;
-  let rq = Math.round(q);
-  let rr = Math.round(r);
-  let rs = Math.round(s);
+// SVG polygon points for the square tile centred at (x, y), shrunk by `inset`
+export function tilePoints(x, y, hexSize, inset = 0) {
+  const h = tileSize(hexSize) / 2 - inset;
+  return `${x + h},${y - h} ${x - h},${y - h} ${x - h},${y + h} ${x + h},${y + h}`;
+}
 
-  const qDiff = Math.abs(rq - q);
-  const rDiff = Math.abs(rr - r);
-  const sDiff = Math.abs(rs - s);
-
-  if (qDiff > rDiff && qDiff > sDiff) {
-    rq = -rr - rs;
-  } else if (rDiff > sDiff) {
-    rr = -rq - rs;
-  }
-
-  return new HexCoord(rq, rr);
+// True if (q, r) is on the standard square board of this radius
+export function inSquareBoard(hex, radius) {
+  return Math.abs(hex.q) <= radius && Math.abs(hex.r) <= radius;
 }
 
 // ---- River (2-player 'river' maps) ----
-// The river runs east-west across the middle of the 2-player hexagon, one
-// water hex per column, so it cuts the map into a north bank (the north
-// queen's side) and a south bank. Hex columns are staggered, so a level line
-// has to wobble: even columns sit exactly on the middle line and odd columns
-// sit half a hex above it (east half) or below it (west half). That wobble is
-// chosen so the river looks the same when the map is turned half a turn,
-// which keeps it fair for both players.
-// Three columns are left as land crossings: the middle one and one toward
-// each end. Water is simply not part of the board (same idea as campaign
-// water), so nothing can walk onto it, stand on it or be placed on it. Ranged
-// attacks only look at distance, so they still reach across.
-// The layout depends only on the map radius - it is never random.
+// The river runs straight east-west along the middle row (r = 0), cutting
+// the board into a north bank and a south bank. Three tiles are left as
+// land crossings: the middle one and one toward each end. Water is not part
+// of the board, so nothing can walk onto it, stand on it or be placed on it.
+// Ranged attacks only look at distance, so they still reach across.
 
-// The row (r) of the river hex in column q.
+// The row (r) of the river in column q (always the middle row on squares).
 export function getRiverRow(q) {
-  return (q >= 0 ? -Math.ceil(q / 2) : -Math.floor(q / 2)) || 0;
+  return 0;
 }
 
 export function getRiverCrossingOffset(gridRadius) {
   return Math.max(2, Math.round(gridRadius * 2 / 3));
 }
 
-// True for every hex in the river's line, water and crossings alike.
+// True for every tile in the river's line, water and crossings alike.
 export function isOnRiverLine(hex, gridRadius) {
   return Math.abs(hex.q) <= gridRadius && hex.r === getRiverRow(hex.q);
 }
@@ -118,7 +110,7 @@ export function isRiverWater(hex, gridRadius) {
   return hex.q !== 0 && Math.abs(hex.q) !== getRiverCrossingOffset(gridRadius);
 }
 
-// Which bank a hex is on. Hexes on the river line itself are on neither.
+// Which bank a tile is on. Tiles on the river line itself are on neither.
 export function isNorthOfRiver(hex) {
   return hex.r < getRiverRow(hex.q);
 }
@@ -139,16 +131,13 @@ export function getRiverLayout(gridRadius) {
 }
 
 // ---- Lake (small 2-player 'lake' maps) ----
-// The small map is too tight for a river, so it gets a lake instead: the
-// centre hex and the ring of six hexes around it, minus the ring's top and
-// bottom hexes (0,-1) and (0,1), which are land. Units walk round either
-// side or straight across the middle. Same rules as river water: off the
-// board, but ranged attacks reach across. Never random.
+// The 3x3 block in the middle of the board, minus its top-middle and
+// bottom-middle tiles, which stay land. Units walk round either side.
 export const LAKE_RADIUS = 1;
 
 export function isLakeWater(hex) {
-  if (hex.q === 0 && Math.abs(hex.r) === 1) return false; // top and bottom of the ring are land
-  return Math.max(Math.abs(hex.q), Math.abs(hex.r), Math.abs(hex.q + hex.r)) <= LAKE_RADIUS;
+  if (hex.q === 0 && Math.abs(hex.r) === 1) return false; // top and bottom middle are land
+  return Math.abs(hex.q) <= LAKE_RADIUS && Math.abs(hex.r) <= LAKE_RADIUS;
 }
 
 export function getLakeHexes() {
@@ -163,19 +152,16 @@ export function getLakeHexes() {
 }
 
 // ---- Water in general (river or lake) ----
-// True if this map shape has built-in water.
 export function hasMapWater(mapShape) {
   return mapShape === 'river' || mapShape === 'lake';
 }
 
-// True if the hex is water on this map (always false on maps without water).
 export function isMapWater(hex, gridRadius, mapShape) {
   if (mapShape === 'river') return isRiverWater(hex, gridRadius);
   if (mapShape === 'lake') return isLakeWater(hex);
   return false;
 }
 
-// Every water hex on this map, for drawing.
 export function getMapWaterHexes(gridRadius, mapShape) {
   if (mapShape === 'river') return getRiverLayout(gridRadius).water;
   if (mapShape === 'lake') return getLakeHexes();
@@ -184,88 +170,60 @@ export function getMapWaterHexes(gridRadius, mapShape) {
 
 // ---- Cliffs (hand-drawn maps) ----
 // mapShape.cliffs maps 'q,r' to the direction its ramp faces (an index into
-// getNeighbors' order). The ramp side and the two sides next to it are open;
-// the other three are a sheer rock face nothing can cross, up or down.
-const NEIGHBOR_DIRS = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
+// SQUARE_DIRECTIONS: 0 east, 1 north, 2 west, 3 south). The ramp side is the
+// only way on or off; the other three sides are a sheer rock face.
 
-// The ramp direction of the cliff on this hex, or undefined if it isn't one.
 export function cliffAt(hex, mapShape) {
   return mapShape?.cliffs?.[`${hex.q},${hex.r}`];
 }
 
-function cliffSideOpen(ramp, dir) {
-  const d = ((dir - ramp) % 6 + 6) % 6;
-  return d === 0 || d === 1 || d === 5;
+function directionIndex(from, to) {
+  return SQUARE_DIRECTIONS.findIndex(d => to.q - from.q === d.q && to.r - from.r === d.r);
 }
 
-// True if a cliff face stands between two neighbouring hexes.
+// True if a cliff face stands between two neighbouring tiles.
 export function isCliffEdge(from, to, mapShape) {
   if (!mapShape?.cliffs) return false;
-  const dir = NEIGHBOR_DIRS.findIndex(([dq, dr]) => to.q - from.q === dq && to.r - from.r === dr);
+  const dir = directionIndex(from, to);
   if (dir < 0) return false;
   const a = cliffAt(from, mapShape);
   const b = cliffAt(to, mapShape);
-  if (a !== undefined && !cliffSideOpen(a, dir)) return true;
-  if (b !== undefined && !cliffSideOpen(b, (dir + 3) % 6)) return true;
+  if (a !== undefined && a !== dir) return true;
+  if (b !== undefined && b !== (dir + 2) % 4) return true;
   return false;
 }
 
 // True if someone standing at `viewer` looks at the cliff on `cliffHex`
 // from the side of its rock face (so the wall hides its top). Uses the
-// direction(s) closest to the line of sight; looking straight along a corner
-// counts as open if either side there is open.
+// side(s) closest to the line of sight; looking straight along a diagonal
+// counts as open if either of the two sides there is the ramp.
 export function cliffFaceTowards(cliffHex, viewer, mapShape) {
   const ramp = cliffAt(cliffHex, mapShape);
   if (ramp === undefined) return false;
   const dq = viewer.q - cliffHex.q, dr = viewer.r - cliffHex.r;
-  const angle = Math.atan2(Math.sqrt(3) * (dr + dq / 2), 1.5 * dq);
-  const facing = NEIGHBOR_DIRS
-    .map(([q, r], i) => {
-      const a = Math.atan2(Math.sqrt(3) * (r + q / 2), 1.5 * q);
-      const diff = Math.abs(((angle - a + 3 * Math.PI) % (2 * Math.PI)) - Math.PI);
-      return { i, diff };
-    })
-    .filter(d => d.diff <= Math.PI / 6 + 1e-6);
-  return !facing.some(d => cliffSideOpen(ramp, d.i));
+  if (dq === 0 && dr === 0) return false;
+  const sides = [];
+  if (Math.abs(dq) >= Math.abs(dr)) sides.push(dq > 0 ? 0 : 2);
+  if (Math.abs(dr) >= Math.abs(dq)) sides.push(dr < 0 ? 1 : 3);
+  return !sides.includes(ramp);
 }
 
-// Check if hex is valid on the board
-// For diamond grids (2-player rectangle maps)
+// Check if a tile is on the board
 export function isValidHex(hex, gridSize, mapShape = 'rectangle') {
-  // Custom (campaign) maps: mapShape is an object carrying the set of
-  // playable hexes. Anything not in it is void - impassable and unplaceable.
+  // Custom (campaign / hand-drawn) maps: mapShape carries the set of
+  // playable tiles. Anything not in it is void.
   if (mapShape && typeof mapShape === 'object' && mapShape.type === 'custom') {
     return mapShape.hexes[`${hex.q},${hex.r}`] === true;
   }
   if (mapShape === 'river' || mapShape === 'lake') {
-    // 2-player hexagon minus the river's or lake's water hexes
-    return Math.abs(hex.q) <= gridSize &&
-           Math.abs(hex.r) <= gridSize &&
-           Math.abs(hex.q + hex.r) <= gridSize &&
-           !isMapWater(hex, gridSize, mapShape);
+    return inSquareBoard(hex, gridSize) && !isMapWater(hex, gridSize, mapShape);
   }
   if (mapShape === 'square') {
-    // For 4-player rectangular maps, use offset coordinate bounds
-    const width = gridSize; // gridSize is sideLength for square maps
-    const height = Math.floor(gridSize * 0.75);
-    return isValidSquareHex(hex, width, height);
-  } else if (mapShape === 'triangle') {
-    // For 3-player triangle maps
-    const sideLength = gridSize;
-    // Check if hex is within the triangle bounds
-    // Triangle has vertices at (0, -(sideLength-1)), (sideLength-1, 0), (-(sideLength-1), sideLength-1)
-    const s = -hex.q - hex.r;
-    return hex.r <= 0 &&
-           hex.q >= -(sideLength - 1) &&
-           hex.q <= (sideLength - 1) &&
-           s >= -(sideLength - 1) &&
-           s <= (sideLength - 1);
-  } else {
-    // Default diamond grid (2-player)
-    return Math.abs(hex.q) <= gridSize &&
-           Math.abs(hex.r) <= gridSize &&
-           Math.abs(hex.q + hex.r) <= gridSize;
+    // 4-player rectangle
+    return isValidSquareHex(hex, gridSize, Math.floor(gridSize * 0.75));
   }
+  // 2- and 3-player square board
+  return inSquareBoard(hex, gridSize);
 }
 
 // Get all valid hexes in movement range (with paths)
@@ -335,59 +293,31 @@ export function generateTriangleGrid(sideLength) {
   return hexes;
 }
 
-// Generate rectangular grid (4-player map)
-// width: number of hexes wide (e.g., 16)
-// height: number of hexes tall (e.g., 12)
-// Returns: array of HexCoord objects forming a rectangle
+// Generate a rectangular board (4-player map), width x height tiles
 export function generateSquareGrid(width, height) {
   const hexes = [];
-
-  // Use odd-q offset coordinates to create a proper rectangle
-  // Then convert to axial coordinates for game logic
-  // This creates a grid that looks rectangular when rendered
   const halfWidth = Math.floor(width / 2);
   const halfHeight = Math.floor(height / 2);
-
-  for (let col = -halfWidth; col <= halfWidth; col++) {
-    for (let row = -halfHeight; row <= halfHeight; row++) {
-      // Convert odd-q offset to axial coordinates
-      // For odd-q: q = col, r = row - floor((col - (col & 1)) / 2)
-      const q = col;
-      const r = row - Math.floor((col - (col & 1)) / 2);
+  for (let q = -halfWidth; q <= halfWidth; q++) {
+    for (let r = -halfHeight; r <= halfHeight; r++) {
       hexes.push(new HexCoord(q, r));
     }
   }
-
   return hexes;
 }
 
-// Check if a hex is within the rectangular grid bounds (for 4-player maps)
 export function isValidSquareHex(hex, width, height) {
-  const halfWidth = Math.floor(width / 2);
-  const halfHeight = Math.floor(height / 2);
-
-  // Convert axial back to odd-q offset to check bounds
-  const col = hex.q;
-  const row = hex.r + Math.floor((hex.q - (hex.q & 1)) / 2);
-
-  return col >= -halfWidth && col <= halfWidth &&
-         row >= -halfHeight && row <= halfHeight;
+  return Math.abs(hex.q) <= Math.floor(width / 2) && Math.abs(hex.r) <= Math.floor(height / 2);
 }
 
-// Rotate hex coordinates by 120 degrees clockwise around origin
-// Used for 3-player resource/tree mirroring
+// Kept from the hex game (3-player maps are not used on squares)
 export function rotateHex120(hex) {
-  // 120° clockwise rotation: (q, r) -> (-q-r, q)
-  // Verified: (7,-7) -> (0,7) -> (-7,0) -> (7,-7)
   return new HexCoord(-hex.q - hex.r, hex.q);
 }
 
-// Rotate hex coordinates by 90 degrees clockwise around origin
-// Used for 4-player resource/tree mirroring
+// Rotate a tile 90 degrees clockwise around the centre
 export function rotateHex90(hex) {
-  // 90° clockwise rotation in axial coordinates
-  // (q, r) -> (-r, q+r)
-  return new HexCoord(-hex.r, hex.q + hex.r);
+  return new HexCoord(-hex.r, hex.q);
 }
 
 // Get starting positions for players based on map shape
@@ -442,9 +372,7 @@ export function getPlayerStartingPositions(mapShape, sideLength, playerCount = 2
 
     // Convert each offset position to axial
     const offsetToAxial = (col, row) => {
-      const q = col;
-      const r = row - Math.floor((col - (col & 1)) / 2);
-      return new HexCoord(q, r);
+      return new HexCoord(col, row);
     };
 
     return [

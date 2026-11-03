@@ -40,22 +40,23 @@ describe('Scrimmage maps', () => {
     layout.water.forEach(h => expect(layout.water.map(key)).toContain(flip(h)));
     Object.entries(layout.mapShape.cliffs || {}).forEach(([k, ramp]) => {
       const [q, r] = k.split(',').map(Number);
-      expect(layout.mapShape.cliffs[flip({ q, r })]).toBe((ramp + 3) % 6);
+      expect(layout.mapShape.cliffs[flip({ q, r })]).toBe((ramp + 2) % 4);
     });
     // resources: the right number for the size, split evenly
     const want = NODES_PER_SIDE[map.size];
     ['food', 'minerals'].forEach(type => {
       expect(layout.resources.filter(r => r.type === type)).toHaveLength(want[type] * 2);
     });
-    // all 6 hexes round each queen are open ground she can lay eggs on:
+    // all 8 tiles round each queen (her egg spots) are open ground:
     // no trees, resources, cliffs, water or map edge
     const blocked = new Set([
       ...layout.resources.map(r => key(r.position)),
       ...layout.trees.map(key),
       ...Object.keys(layout.mapShape.cliffs || {})
     ]);
-    [a, b].forEach(queen => getNeighbors(queen).forEach(n => {
-      expect(at.has(key(n)) && !blocked.has(key(n))).toBe(true);
+    const ring = q => [[1, 0], [-1, 0], [1, 1], [-1, 1], [1, -1], [-1, -1], [0, -1], [0, 1]].map(([dq, dr]) => ({ q: q.q + dq, r: q.r + dr }));
+    [a, b].forEach(queen => ring(queen).forEach(n => {
+      expect(`${id} ${key(n)} ${at.has(key(n)) && !blocked.has(key(n))}`).toBe(`${id} ${key(n)} true`);
     }));
         // every hex can be walked to from the player's queen
     const reach = walkable(layout, layout.leaders.player1);
@@ -80,38 +81,39 @@ describe('Scrimmage maps', () => {
 describe('Cliffs', () => {
   // A cliff with its ramp facing north, in the middle of open ground
   const layout = parseLayout([
-    '. . . . .',
-    ' . . . . ',
-    '. . . . .',
-    ' . . . . ',
-    '. . ^ . .',
-    ' . . . . ',
-    '. . 1 . .',
-    ' . . . . ',
-    '. . . . .'
+    '.....',
+    '.....',
+    '.....',
+    '..^..',
+    '.....',
+    '..1..',
+    '.....'
   ]);
   const cliff = Object.keys(layout.mapShape.cliffs).map(k => { const [q, r] = k.split(',').map(Number); return new HexCoord(q, r); })[0];
   const north = new HexCoord(cliff.q, cliff.r - 1);
   const south = new HexCoord(cliff.q, cliff.r + 1);
-  const southEast = new HexCoord(cliff.q + 1, cliff.r);
-  const northEast = new HexCoord(cliff.q + 1, cliff.r - 1);
+  const east = new HexCoord(cliff.q + 1, cliff.r);
+  const west = new HexCoord(cliff.q - 1, cliff.r);
 
-  test('the rock face blocks the three southern sides, both ways', () => {
+  test('the rock face blocks every side but the ramp, both ways', () => {
     expect(isCliffEdge(south, cliff, layout.mapShape)).toBe(true);
     expect(isCliffEdge(cliff, south, layout.mapShape)).toBe(true);
-    expect(isCliffEdge(southEast, cliff, layout.mapShape)).toBe(true);
+    expect(isCliffEdge(east, cliff, layout.mapShape)).toBe(true);
+    expect(isCliffEdge(west, cliff, layout.mapShape)).toBe(true);
     expect(isCliffEdge(north, cliff, layout.mapShape)).toBe(false);
-    expect(isCliffEdge(northEast, cliff, layout.mapShape)).toBe(false);
+    expect(isCliffEdge(cliff, north, layout.mapShape)).toBe(false);
   });
 
   test('an ant below the face has to walk round to the ramp', () => {
     const oneStep = getMovementRange(south, 1, layout.gridRadius, [], layout.mapShape).map(key);
     expect(oneStep).not.toContain(key(cliff));
-    const threeSteps = getMovementRange(south, 3, layout.gridRadius, [], layout.mapShape).map(key);
-    expect(threeSteps).toContain(key(cliff)); // round the side and up the ramp
+    const fourSteps = getMovementRange(south, 4, layout.gridRadius, [], layout.mapShape).map(key);
+    expect(fourSteps).not.toContain(key(cliff));
+    const fiveSteps = getMovementRange(south, 5, layout.gridRadius, [], layout.mapShape).map(key);
+    expect(fiveSteps).toContain(key(cliff)); // round the side and up the ramp
   });
 
-  test('an ant on a cliff sees 1 hex further', () => {
+  test('an ant on a cliff sees 1 tile further', () => {
     const state = {
       mapShape: layout.mapShape,
       players: { player1: {} },

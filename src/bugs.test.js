@@ -12,8 +12,8 @@ const fresh = () => {
 };
 
 test('Termite and Mantis stats', () => {
-  expect(getAntTypeById('termite')).toMatchObject({ maxHealth: 90, moveRange: 1, attackRange: 1, large: true });
-  expect(getAntTypeById('mantis')).toMatchObject({ attackRange: 2, meleeReach: true, large: true });
+  expect(getAntTypeById('termite')).toMatchObject({ maxHealth: 90, moveRange: 2, attackRange: 1, large: true });
+  expect(getAntTypeById('mantis')).toMatchObject({ attackRange: 3, meleeReach: true, large: true });
   expect(isMeleeType(getAntTypeById('mantis'))).toBe(true);
   expect(isMeleeType(getAntTypeById('spitter'))).toBe(false);
 });

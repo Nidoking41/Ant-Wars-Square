@@ -1,5 +1,5 @@
 import { AntTypes, GameConstants, getAntTypeById, isMeleeType } from './antTypes';
-import { hexDistance, getNeighbors, isCliffEdge } from './hexUtils';
+import { hexDistance, getNeighbors, isCliffEdge, SQUARE_DIRECTIONS } from './hexUtils';
 import { getAntAttack, getAntDefense, unitStrength } from './gameState';
 import { awardKillXp } from './experience';
 
@@ -757,25 +757,28 @@ export function moveAnt(gameState, antId, targetPosition) {
   return moved;
 }
 
-// Bombardier splash attack at target hex (affects 3-hex area in a line based on rotation)
-// Splash shapes are a triangle: the target hex plus its neighbours in
-// direction `rotation` and `rotation - 1` (6 possible). Only the shapes that
-// lean back toward the Bombardier are allowed - the ones whose two extra hexes
-// are, together, closer to her than the target is. That is 3 shapes for most
-// targets, 2 when the target is in a straight line from her.
-const SPLASH_DIRECTIONS = [
-  { q: 1, r: 0 }, { q: 1, r: -1 }, { q: 0, r: -1 },
-  { q: -1, r: 0 }, { q: -1, r: 1 }, { q: 0, r: 1 }
-];
+// Bombardier splash attack: an L-shaped corner of 3 tiles - the target tile
+// plus its neighbours in direction `rotation` and the direction 90 degrees
+// clockwise from it (4 possible shapes, rotation 0-3, using
+// SQUARE_DIRECTIONS: 0 east, 1 north, 2 west, 3 south). Only the shapes that
+// do not reach further away from the Bombardier than the target allowed:
+// 2 shapes when the target is in a straight line from her, 3 otherwise.
+export function getSplashHexes(targetHex, rotation) {
+  const dir = SQUARE_DIRECTIONS[rotation % 4];
+  const sideDir = SQUARE_DIRECTIONS[(rotation + 3) % 4];
+  return [
+    targetHex,
+    { q: targetHex.q + dir.q, r: targetHex.r + dir.r },
+    { q: targetHex.q + sideDir.q, r: targetHex.r + sideDir.r }
+  ];
+}
+
 export function getAllowedSplashRotations(attackerPos, targetHex) {
   const d = hexDistance(attackerPos, targetHex);
   const allowed = [];
-  for (let rotation = 0; rotation < 6; rotation++) {
-    const a = SPLASH_DIRECTIONS[rotation];
-    const b = SPLASH_DIRECTIONS[(rotation + 5) % 6];
-    const da = hexDistance(attackerPos, { q: targetHex.q + a.q, r: targetHex.r + a.r });
-    const db = hexDistance(attackerPos, { q: targetHex.q + b.q, r: targetHex.r + b.r });
-    if (da + db < 2 * d) allowed.push(rotation);
+  for (let rotation = 0; rotation < 4; rotation++) {
+    const [, a, b] = getSplashHexes(targetHex, rotation);
+    if (hexDistance(attackerPos, a) + hexDistance(attackerPos, b) <= 2 * d) allowed.push(rotation);
   }
   return allowed;
 }
@@ -795,30 +798,11 @@ export function bombardierSplashAttack(gameState, attackerId, targetHex, rotatio
     return { gameState, damageDealt: [], attackAnimation: null };
   }
   // The splash may not reach further away than its target
-  if (!getAllowedSplashRotations(attacker.position, targetHex).includes(rotation % 6)) {
+  if (!getAllowedSplashRotations(attacker.position, targetHex).includes(rotation % 4)) {
     return { gameState, damageDealt: [], attackAnimation: null };
   }
 
-  // Get 3 hexes in a triangle based on rotation (0-5)
-  // Triangle has center hex + one hex pointing in rotation direction + one adjacent to the point
-  const directions = [
-    { q: 1, r: 0 },   // 0: East
-    { q: 1, r: -1 },  // 1: Northeast
-    { q: 0, r: -1 },  // 2: Northwest
-    { q: -1, r: 0 },  // 3: West
-    { q: -1, r: 1 },  // 4: Southwest
-    { q: 0, r: 1 }    // 5: Southeast
-  ];
-
-  const dir = directions[rotation % 6];
-  const leftDir = directions[(rotation + 5) % 6]; // One direction counter-clockwise from rotation
-
-  // Get center + point in rotation direction + left adjacent to the point
-  const splashHexes = [
-    targetHex, // Center
-    { q: targetHex.q + dir.q, r: targetHex.r + dir.r }, // Point
-    { q: targetHex.q + leftDir.q, r: targetHex.r + leftDir.r } // Left adjacent
-  ];
+  const splashHexes = getSplashHexes(targetHex, rotation);
 
   // Find all ants in splash area (including friendly fire)
   const affectedAnts = Object.values(gameState.ants).filter(ant => {

@@ -317,7 +317,8 @@ export function createInitialGameState(options = {}) {
 // tries; if the map is simply too cramped, the best try is topped up with
 // whatever is left - the node count never drops.
 function pickSpacedPositions(candidates, count, imagesOf) {
-  const touching = (a, b) => Math.max(Math.abs(a.q - b.q), Math.abs(a.r - b.r), Math.abs((a.q + a.r) - (b.q + b.r))) <= 1;
+  // Touching includes the diagonal corners, so nodes never sit side by side
+  const touching = (a, b) => Math.max(Math.abs(a.q - b.q), Math.abs(a.r - b.r)) <= 1;
   const imagesFor = pos => {
     const seen = new Set();
     return [pos, ...imagesOf(pos)].filter(h => {
@@ -384,18 +385,18 @@ function generateResourceNodes(gridRadius = 6, water = null) {
     for (let r = -gridRadius; r < northEnd; r++) { // Only north side
       const s = -q - r;
       if (water === MapShape.LAKE && isLakeWater({ q, r })) continue; // never in the lake
-      if (Math.abs(q) <= gridRadius && Math.abs(r) <= gridRadius && Math.abs(s) <= gridRadius) {
+      if (Math.abs(q) <= gridRadius && Math.abs(r) <= gridRadius) { // square board
         const hex = new HexCoord(q, r);
 
         // Exclude positions too close to north queen at (0, -queenOffset)
-        const distToNorthQueen = Math.max(Math.abs(q - 0), Math.abs(r - (-queenOffset)), Math.abs(s - queenOffset));
+        const distToNorthQueen = Math.abs(q) + Math.abs(r + queenOffset);
 
         // Also check if the mirrored position would be too close to south queen at (0, queenOffset)
         // When we mirror (q, r, s) to (-q, -r, -s) (180-degree rotation)
         const mirroredQ = -q;
         const mirroredR = -r;
         const mirroredS = -s;
-        const distToSouthQueen = Math.max(Math.abs(mirroredQ - 0), Math.abs(mirroredR - queenOffset), Math.abs(mirroredS - (-queenOffset)));
+        const distToSouthQueen = Math.abs(mirroredQ) + Math.abs(mirroredR - queenOffset);
 
         // Only include if both north and mirrored south positions are far enough from queens
         if (distToNorthQueen >= 3 && distToSouthQueen >= 3) {
@@ -488,11 +489,11 @@ function generateTrees(gridRadius = 6, existingOccupiedPositions = [], treesPerS
     for (let r = -gridRadius; r < northEnd; r++) { // Only north side
       const s = -q - r;
       if (water === MapShape.LAKE && isLakeWater({ q, r })) continue; // never in the lake
-      if (Math.abs(q) <= gridRadius && Math.abs(r) <= gridRadius && Math.abs(s) <= gridRadius) {
+      if (Math.abs(q) <= gridRadius && Math.abs(r) <= gridRadius) { // square board
         const hex = new HexCoord(q, r);
 
         // Exclude positions too close to north queen at (0, -queenOffset)
-        const distToNorthQueen = Math.max(Math.abs(q - 0), Math.abs(r - (-queenOffset)), Math.abs(s - queenOffset));
+        const distToNorthQueen = Math.abs(q) + Math.abs(r + queenOffset);
 
         // Skip if occupied or too close to queen
         if (!isOccupied(hex) && distToNorthQueen >= 2) {
@@ -500,7 +501,7 @@ function generateTrees(gridRadius = 6, existingOccupiedPositions = [], treesPerS
           // 180-degree rotation: negate both q and r
           const mirroredHex = new HexCoord(-q, -r);
           const mirroredS = -(-q) - (-r); // = q + r = -s
-          const distToSouthQueen = Math.max(Math.abs(-q - 0), Math.abs(-r - queenOffset), Math.abs(mirroredS - (-queenOffset)));
+          const distToSouthQueen = Math.abs(q) + Math.abs(-r - queenOffset);
 
           // Only include if both north and mirrored south positions are valid
           if (!isOccupied(mirroredHex) && distToSouthQueen >= 2) {
@@ -575,11 +576,7 @@ function generateResourceNodesMultiplayer(sideLength, playerCount, mapShape, wat
   // Filter out hexes too close to starting positions
   allHexes.forEach(hex => {
     const tooClose = startingPositions.some(startPos => {
-      const dist = Math.max(
-        Math.abs(hex.q - startPos.q),
-        Math.abs(hex.r - startPos.r),
-        Math.abs((-hex.q - hex.r) - (-startPos.q - startPos.r))
-      );
+      const dist = Math.abs(hex.q - startPos.q) + Math.abs(hex.r - startPos.r);
       return dist < 3;
     });
 
@@ -660,7 +657,7 @@ function generateResourceNodes3Player(gridRadius = 8) {
   for (let q = -gridRadius; q <= gridRadius; q++) {
     for (let r = -gridRadius; r <= gridRadius; r++) {
       const s = -q - r;
-      if (Math.abs(q) <= gridRadius && Math.abs(r) <= gridRadius && Math.abs(s) <= gridRadius) {
+      if (Math.abs(q) <= gridRadius && Math.abs(r) <= gridRadius) { // square board
         const hex = new HexCoord(q, r);
 
         // Only include positions in player 1's sector (top-right, near position (radius-1, -(radius-1)))
@@ -776,11 +773,7 @@ function generateTreesMultiplayer(sideLength, playerCount, mapShape, occupiedPos
 
     // Check distance to starting positions
     const tooClose = startingPositions.some(startPos => {
-      const dist = Math.max(
-        Math.abs(hex.q - startPos.q),
-        Math.abs(hex.r - startPos.r),
-        Math.abs((-hex.q - hex.r) - (-startPos.q - startPos.r))
-      );
+      const dist = Math.abs(hex.q - startPos.q) + Math.abs(hex.r - startPos.r);
       return dist < 2;
     });
 
@@ -856,7 +849,7 @@ function generateTrees3Player(gridRadius, occupiedPositions, treesPerSector) {
   for (let q = -gridRadius; q <= gridRadius; q++) {
     for (let r = -gridRadius; r <= gridRadius; r++) {
       const s = -q - r;
-      if (Math.abs(q) <= gridRadius && Math.abs(r) <= gridRadius && Math.abs(s) <= gridRadius) {
+      if (Math.abs(q) <= gridRadius && Math.abs(r) <= gridRadius) { // square board
         const hex = new HexCoord(q, r);
 
         // Only include positions in player 1's sector (top-right quadrant where q > 0 and r < 0)
@@ -947,16 +940,8 @@ export function respawnResource(gameState, resourceType, isNorthSide) {
         // Check distance from queen on this side
         const queenR = isNorthSide ? -queenOffset : queenOffset;
         const distToQueen = isCustomMap
-          ? Math.min(...leaders.map(l => Math.max(
-              Math.abs(q - l.position.q),
-              Math.abs(r - l.position.r),
-              Math.abs(s - (-l.position.q - l.position.r))
-            )), Infinity)
-          : Math.max(
-              Math.abs(q - 0),
-              Math.abs(r - queenR),
-              Math.abs(s - (-queenR))
-            );
+          ? Math.min(...leaders.map(l => Math.abs(q - l.position.q) + Math.abs(r - l.position.r)), Infinity)
+          : Math.abs(q) + Math.abs(r - queenR);
 
         // Only include if far enough from queen
         if (distToQueen >= 3) {
@@ -986,8 +971,7 @@ export function respawnResource(gameState, resourceType, isNorthSide) {
   // nodes when there is room for that
   if (validPositions.length > 0) {
     const spaced = validPositions.filter(hex => !Object.values(gameState.resources).some(res =>
-      Math.max(Math.abs(hex.q - res.position.q), Math.abs(hex.r - res.position.r),
-        Math.abs((hex.q + hex.r) - (res.position.q + res.position.r))) <= 1));
+      Math.max(Math.abs(hex.q - res.position.q), Math.abs(hex.r - res.position.r)) <= 1));
     const pool = spaced.length > 0 ? spaced : validPositions;
     const randomPos = pool[Math.floor(Math.random() * pool.length)];
     const newResourceId = `resource_${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
@@ -2595,15 +2579,12 @@ export function getSpawningPoolHexes(queen, getNeighborsFunc, gameState = null) 
     }
   }
 
-  // Get all neighbors
-  const allNeighbors = getNeighborsFunc(queen.position);
-
-  // Return the first N spots based on queen tier and hero bonuses
-  // We'll use a consistent ordering to make it predictable
-  // Spots are handed out in left/right pairs so they sit on either side of the
-  // queen: lower-right, lower-left, upper-right, upper-left, top, bottom
-  const spotOrder = [0, 4, 1, 3, 2, 5];
-  const ordered = spotOrder.map(i => allNeighbors[i]);
+  // Egg spots are the 8 tiles around the queen (corners too), handed out in
+  // left/right pairs so they sit on either side of her: right, left,
+  // lower-right, lower-left, upper-right, upper-left, then top and bottom
+  const { q, r } = queen.position;
+  const ordered = [[1, 0], [-1, 0], [1, 1], [-1, 1], [1, -1], [-1, -1], [0, -1], [0, 1]]
+    .map(([dq, dr]) => new HexCoord(q + dq, r + dr));
   const usable = gameState
     ? ordered.filter(h => isValidHex(h, gameState.gridRadius, gameState.mapShape || 'rectangle'))
     : ordered;
