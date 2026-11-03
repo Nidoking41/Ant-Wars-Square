@@ -1,24 +1,24 @@
 {
   "files": {
     "main.css": "/Ant-Wars-Square/static/css/main.df0cd6c0.css",
-    "main.js": "/Ant-Wars-Square/static/js/main.4939d794.js",
+    "main.js": "/Ant-Wars-Square/static/js/main.823b0bff.js",
     "static/js/527.cd7002a3.chunk.js": "/Ant-Wars-Square/static/js/527.cd7002a3.chunk.js",
-    "static/js/129.530060fd.chunk.js": "/Ant-Wars-Square/static/js/129.530060fd.chunk.js",
+    "static/js/129.e1d52508.chunk.js": "/Ant-Wars-Square/static/js/129.e1d52508.chunk.js",
     "static/js/818.de138ef8.chunk.js": "/Ant-Wars-Square/static/js/818.de138ef8.chunk.js",
     "static/js/453.2d7e922e.chunk.js": "/Ant-Wars-Square/static/js/453.2d7e922e.chunk.js",
     "static/js/387.909ab917.chunk.js": "/Ant-Wars-Square/static/js/387.909ab917.chunk.js",
     "static/media/forestfloor.png": "/Ant-Wars-Square/static/media/forestfloor.d929d519eef06e201a76.png",
     "index.html": "/Ant-Wars-Square/index.html",
     "main.df0cd6c0.css.map": "/Ant-Wars-Square/static/css/main.df0cd6c0.css.map",
-    "main.4939d794.js.map": "/Ant-Wars-Square/static/js/main.4939d794.js.map",
+    "main.823b0bff.js.map": "/Ant-Wars-Square/static/js/main.823b0bff.js.map",
     "527.cd7002a3.chunk.js.map": "/Ant-Wars-Square/static/js/527.cd7002a3.chunk.js.map",
-    "129.530060fd.chunk.js.map": "/Ant-Wars-Square/static/js/129.530060fd.chunk.js.map",
+    "129.e1d52508.chunk.js.map": "/Ant-Wars-Square/static/js/129.e1d52508.chunk.js.map",
     "818.de138ef8.chunk.js.map": "/Ant-Wars-Square/static/js/818.de138ef8.chunk.js.map",
     "453.2d7e922e.chunk.js.map": "/Ant-Wars-Square/static/js/453.2d7e922e.chunk.js.map",
     "387.909ab917.chunk.js.map": "/Ant-Wars-Square/static/js/387.909ab917.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.df0cd6c0.css",
-    "static/js/main.4939d794.js"
+    "static/js/main.823b0bff.js"
   ]
 }
